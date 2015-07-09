@@ -11,6 +11,8 @@ import select
 import time
 from pymavlink import mavutil
 from pymavlink import mavwp
+import sys
+import select
 
 def LatLon2Dist(lat_diff, lon_diff, lat_ref):
     #LatLon2Dist converts differences in lat/lon position to cartesian
@@ -46,11 +48,29 @@ def AzimuthNearest(az, az_prev, cal):
 class GCS:
 	""" Class for GCS data """
 	def __init__(self, port):
+		# lat lon alt of actual car
 		self.lat = None
 		self.lon = None
 		self.alt = None
+		# position where last waypoint was set
+		self.lat_wp = None
+		self.lon_wp = None
+		self.alt_wp = None
+
 		self.port= port
 		self.gps = None
+
+		self.knots = None
+		self.speed = None
+		self.heading = None
+
+	def lat_diff(self):
+		# distance between current lat and lat where last wp was set
+		return self.lat - self.lat_old
+
+	def lon_diff(self):
+		# distance between current lon and lon where last wp was set
+		return self.lon - self.lon_old
 
 	def connect(self):
 		try:
@@ -81,21 +101,53 @@ class GCS:
 class Aircraft:
 	""" Class for Aircraft data """
 	def __init__(self, host):
+
 		self.heartbeat = False
 		self.heartbeat_timeout = 0
 		self.heartbeat_time = time.time()
+
 		self.mav = None
 		self.host = host
+
+		self.speed = None
+		self.heading = None
+
+		# actual location of ac in lat/lon/alt
 		self.lat = None
 		self.lon = None
 		self.alt = None
+
+		# set point of the wp in lat/lon/alt
 		self.set_lat = None
 		self.set_lon = None
 		self.set_alt = None
-		self.min_alt = None
-		self.max_alt = None
-		self.max_x = None
-		self.max_y = None
+
+		# Location of ac relative to car in meters
+		self.rel_x = None
+		self.rel_y = None
+		self.rel_z = None
+
+		# Set point of wp relative to car in meters
+		self.set_x = 0
+		self.set_y = 0
+		self.set_z = 0
+
+		# Set point of ac position relative to car in meters
+		self.set_x = 0
+		self.set_y = 0
+		self.set_z = 0
+
+		# max and min alt
+		self.min_alt = 75
+		self.max_alt = 250
+
+		# max x and y distance in meters from car
+		self.max_x = 200
+		self.max_y = 200
+
+		# Min and max airspeed
+		self.as_min = 14
+		self.as_max = 25
 
 	def connect(self):
 		print("Connecting to autopilot...")
@@ -106,7 +158,8 @@ class Aircraft:
 		self.mav.wait_heartbeat(blocking=True)
 		print("Got Heartbeat!")
 
-	def set(self, lat, lon, alt):
+	def set_point(self, lat, lon, alt):
+		# Set new guided wp for ac
 		self.set_lat = lat
 		self.set_lon = lon
 		self.set_alt = alt
@@ -127,23 +180,72 @@ class Aircraft:
 		self.mav.waypoint_clear_all_send()                                     
 		self.mav.waypoint_count_send(wp.count())  
 
+	def set_speed(self, speed):
+		# set new speed of ac
+		pass
+
 	def update(self):
 		msg = self.mav.recv_match(blocking=False)
+
 		self.heartbeat_timeout = time.time() - self.heartbeat_time
 		if self.heartbeat_timeout > 3:
 			print("LOST HEARTBEAT!!!")
+			self.heartbeat = False
 			self.heartbeat_time = time.time()
+
+		# Handle message
 		if msg:
 			if msg.get_type() == "HEARTBEAT":
-				self.heartbeat_timeout = 0
 				self.heartbeat_time = time.time()
+				self.heartbeat = True
 			if msg.get_type() == "GLOBAL_POSITION_INT":
-				print(msg.lat,msg.lon,msg.relative_alt)
+				#print(msg.lat,msg.lon,msg.relative_alt)
+				self.lat = msg.lat
+				self.lon = msg.lon
+				self.alt = msg.alt
 			if msg.get_type() == "MISSION_REQUEST":
 				print("GOT MISSION REQUEST")
 				self.mav.mav.send(wp.wp(msg.seq))
 			if msg.get_type() == "MISSION_ACK":
 				print('MISSION_ACK %i' % msg.type)
+
+def handle_input():
+	global ac
+	global gcs
+
+	timeout = 0.01 #timeout for read from sdtin
+	
+	try:
+		ready = select.select([sys.stdin], [], [], timeout)[0]
+
+		if ready:
+			for file in ready:
+				line = file.readline()
+				match = re.search(r'(\w+) (\w+) (\S+)', line)
+				if match:
+					if match.group(1) == 'set':
+						if match.group(2) == 'minspeed':
+							print("SET MINIMUM ALT TO {0}".format(match.group(3)))
+						elif match.group(2) == 'maxspeed':	
+							print("SET MAXIMUM ALT TO {0}".format(match.group(3)))
+						elif match.group(2) == 'minalt':
+							print("SET MINIMUM ALT TO {0}".format(match.group(3)))
+						elif match.group(2) == 'maxalt':
+							print("SET MAXIUM ALT TO {0}".format(match.group(3)))
+						elif match.group(2) == 'point':
+							print("SET POINT TO {0}".format(match.group(3)))
+						elif match.group(2) == 'alt':
+							print('SET ALT TO {0}'.format(match.group(3)))
+						else:
+							print("NOT A KNOWN COMMAND: {0}".format(match.group(2)))
+					else:
+						print("NOT A KNOWN COMMAND: {0}".format(match.group(1)))
+				else:
+					print('COMMAND NOT FORMATED PROPERLY')
+
+	except:
+		print("Couldn't read from stdin")
+		exit(0)
 
 
 # Hardcoded location (GPS device used if available)
@@ -161,6 +263,22 @@ gcs = GCS(gps_port)
 #gcs.connect()
 
 print("Entering main loop...")
-while True:
+while sys.stdin:
 	ac.update()
 	gcs.update()
+	handle_input()
+	
+	# #Add a new guided waypoint if the vehicle has moved enough
+	# gcs_x,gcs_y = LatLon2Dist(gcs.lat_diff(),gcs.lon_diff(), gcs.lat)
+	# gcs_dist = sqrt((gcs_x*gcs_x) + (gcs_y*gcs_y))
+	# if gcs_dist > 100:
+	# 	#ac.set_point()
+	# 	gcs.lat_old = gcs.lat
+	# 	gcs.lon_old = gcs.lon
+
+	# # Get distance between car and ac. x east/west, y north/south
+	# # Set Speed based off of position
+	# ac_x,ac_y = LatLon2Dist(gcs.lat-ac.lat,gcs.lon-ac.lon, gcs.lat)
+	# # Set distance from the car
+	# offset = error * gain
+	# ac.set_speed(gcs.speed + offset)
