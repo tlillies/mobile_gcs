@@ -36,6 +36,20 @@ def LatLon2Dist(lat_diff, lon_diff, lat_ref):
     x = lon_diff*(math.pi*re_c)/180
     return x, y
 
+def Dist2LatLon(lat,lon,dn,de):
+	# William's aviation
+	# dn -- distance north
+	# de -- distance east
+	re = 6378137
+
+	dLat = dn/re
+	dLon = de/(re*math.cos(math.pi*lat/180))
+
+	lat0 = lat + dLat * 180/math.pi
+	lon0 = lon + dLat * 180/math.pi
+
+	return lat0, lon0
+
 def AzimuthNearest(az, az_prev, cal):
     az_nominal = cal['az_min']+(az/math.pi/2)*(cal['az_max']-cal['az_min'])
     az_candidates = [ az_nominal+x*(cal['az_max']-cal['az_min']) for x in range(-3,4)]
@@ -63,6 +77,9 @@ class GCS:
 		self.knots = None
 		self.speed = None
 		self.heading = None
+
+		self.update_distance = 100
+		self.wp_distance
 
 	def lat_diff(self):
 		# distance between current lat and lat where last wp was set
@@ -127,15 +144,15 @@ class Aircraft:
 		self.rel_y = None
 		self.rel_z = None
 
-		# Set point of wp relative to car in meters
-		self.set_x = 0
-		self.set_y = 0
-		self.set_z = 0
+		## Set point of wp relative to car in meters
+		#self.set_x = 0
+		#self.set_y = 0
+		#self.set_z = 0
 
 		# Set point of ac position relative to car in meters
 		self.set_x = 0
 		self.set_y = 0
-		self.set_z = 0
+		self.set_z = 100
 
 		# max and min alt
 		self.min_alt = 75
@@ -262,23 +279,45 @@ gps_port = '/dev/ttyUSB1'
 gcs = GCS(gps_port)
 #gcs.connect()
 
+previous_speed = 0
+
 print("Entering main loop...")
 while sys.stdin:
 	ac.update()
 	gcs.update()
 	handle_input()
 	
-	# #Add a new guided waypoint if the vehicle has moved enough
-	# gcs_x,gcs_y = LatLon2Dist(gcs.lat_diff(),gcs.lon_diff(), gcs.lat)
-	# gcs_dist = sqrt((gcs_x*gcs_x) + (gcs_y*gcs_y))
-	# if gcs_dist > 100:
-	# 	#ac.set_point()
-	# 	gcs.lat_old = gcs.lat
-	# 	gcs.lon_old = gcs.lon
+	## Guided Way Point Update
+	#Add a new guided waypoint if the ground vehicle has moved gcs.update_distance
+	delta_x,delta_y = LatLon2Dist(gcs.lat_diff(),gcs.lon_diff(), gcs.lat)
+	dist_moved = sqrt((delta_x*delta_x) + (delta_y*delta_y))
+	if dist_moved > gcs.update_distance:
+		#Calculate x and y distance from car based off of heading
+		y = gcs.wp_distance * math.cos(math.radians(gcs.heading))
+		x = gcs.wp_distance * math.sin(math.radians(gcs.heading))
 
-	# # Get distance between car and ac. x east/west, y north/south
-	# # Set Speed based off of position
-	# ac_x,ac_y = LatLon2Dist(gcs.lat-ac.lat,gcs.lon-ac.lon, gcs.lat)
-	# # Set distance from the car
-	# offset = error * gain
-	# ac.set_speed(gcs.speed + offset)
+		# Calculate lat/lon and set guided wp
+		lat, lon = Dist2LatLon(gcs.lat,gcs.lon,x,y)
+		ac.set_point(lat,lon,alt)
+
+		# tag gcs location for next distance calculation
+		gcs.lat_wp = gcs.lat
+		gcs.lon_wp = gcs.lon
+
+
+	## Speed controller
+	# Get distance between car and ac. x east/west, y north/south
+	ac_x,ac_y = LatLon2Dist(gcs.lat-ac.lat,gcs.lon-ac.lon, gcs.lat)
+	# Calculate the position of ac relative to car
+	alpha = gcs.heading #math.atan2(ay_y/ac_x)
+	ac.rel_y = (-1)*x*math.sin(alpha) + y*math.cos(alpha)
+	ac.rel_x = x*math.cos(alpha) + y*math.cos(alpha)
+	# Calculate error
+	error = ac.set_y - ac.rel_y
+	# Calculate corrected speed
+	p_offset = error * gain
+	speed = gcs.speed + p_offset
+	# Update speed if changed
+	if speed != previous_speed:
+		ac.set_speed(speed)
+		previous_speed = speed
