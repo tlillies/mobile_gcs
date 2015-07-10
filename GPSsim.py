@@ -11,6 +11,13 @@ import random
 import time
 import math
 import pdb
+import serial
+
+#Set Serial port
+port = '/tmp/ttyV1'
+print("Opening port {0}...".format(port))
+output = serial.Serial(port=port, baudrate=4800)
+print("{0} opened".format(port))
 
 #Input starting coordinates of the ground station
 
@@ -89,8 +96,20 @@ while 1:
             kt = round(kt, 2)
         
         #Print a sample line of GPS data
-
-        print("$GPRMC", time.strftime("%I%M%S.000"), "A", abs(y), str2, abs(x), str1, kt, c, time.strftime("%d%m%y"), "", "*00", sep=',')
+        string = "$GPRMC," + \
+                str(time.strftime("%I%M%S.000"))+ \
+                ",A," + \
+                str(abs(y)) + "," + \
+                str(str2) + "," + \
+                str(abs(x)) + "," + \
+                str(str1) + "," + \
+                str(kt)+"," + \
+                str(c) + "," + \
+                str(time.strftime("%d%m%y")) + \
+                ""+"," + \
+                "*00\n"
+        #print("$GPRMC", time.strftime("%I%M%S.000"), "A", abs(y), str2, abs(x), str1, kt, c, time.strftime("%d%m%y"), "", "*00", sep=',')
+        output.write(string)
 
         #Send a new line every second
 
