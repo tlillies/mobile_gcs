@@ -88,11 +88,11 @@ class GCS:
 
 	def lat_diff(self):
 		# distance between current lat and lat where last wp was set
-		return self.lat - self.lat_old
+		return self.lat - self.lat_wp
 
 	def lon_diff(self):
 		# distance between current lon and lon where last wp was set
-		return self.lon - self.lon_old
+		return self.lon - self.lon_wp
 
 	def connect(self):
 		try:
@@ -100,7 +100,7 @@ class GCS:
 			self.gps = serial.Serial(port=self.port, baudrate=4800, timeout=.1)
 			print("Got GPS!")
 		except:
-		    pass
+		    print("GPS CONECT FAILED")
 
 	def update(self):
 		global readable
@@ -119,13 +119,29 @@ class GCS:
 			data = raw.split(',')
 			if data[0] == "$GPRMC":
 				if data[2] == 'A': # check for valid GPS fix
-					self.lat = data[3]
-					self.lon = data[5]
-					self.heading = data[8]
+
+					lat = float(data[3])/100
+					lat = divmod(lat,1)[0]+divmod(lat,1)[1]*100/60
+					if data[4] == 'S':
+						lat *= (-1)
+
+					lon = float(data[5])/100
+					lon = divmod(lon,1)[0]+divmod(lon,1)[1]*100/60
+					if data[6] == 'W':
+						lon *= (-1)
+
+					speed = float(data[7]) * (0.514444)
+
+					self.lat = lat
+					self.lon = lon
+					self.heading = float(data[8])
+					self.speed = speed
 					self.error = False
-					print("lat {0}, lon {1}, heading {2}".format(self.lat,self.lon,self.heading))
+
 				if data[2] == 'V':
 					self.error = True
+
+
 		            # Assign GPS to present location, convert decimal minutes to decimal cegrees
 		            #loc['lat'] = float(b[2])/100
 		            #loc['lat'] = divmod(loc['lat'],1)[0]+divmod(loc['lat'],1)[1]*100/60
@@ -203,21 +219,21 @@ class Aircraft:
 		self.set_lon = lon
 		self.set_alt = alt
 
-		seq = 1
+		seq = 0
 		frame = mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT
 		radius = 10
 		current = 2  # flag for guided mode
-		wp = mavwp.MAVWPLoader()
+		self.wp = mavwp.MAVWPLoader()
 
-		wp.add(mavutil.mavlink.MAVLink_mission_item_message(master.target_system,
-            master.target_component,
+		self.wp.add(mavutil.mavlink.MAVLink_mission_item_message(self.mav.target_system,
+            self.mav.target_component,
             seq,
             frame,
             mavutil.mavlink.MAV_CMD_NAV_WAYPOINT,
-            current, 0, 0, radius, 0, 0,
-            lat,lon,alt))
+            0, 0, 0, radius, 0, 0,
+            self.set_lat,self.set_lon,self.set_alt))
 		self.mav.waypoint_clear_all_send()                                     
-		self.mav.waypoint_count_send(wp.count())  
+		self.mav.waypoint_count_send(self.wp.count())  
 
 	def set_speed(self, speed):
 		# set new speed of ac
@@ -240,15 +256,17 @@ class Aircraft:
 				if msg.get_type() == "HEARTBEAT":
 					self.heartbeat_time = time.time()
 					self.heartbeat = True
-					print("heartbeat")
+					#print("heartbeat")
 				if msg.get_type() == "GLOBAL_POSITION_INT":
-					print(msg.lat,msg.lon,msg.relative_alt)
-					self.lat = msg.lat
-					self.lon = msg.lon
+					#print(msg.lat,msg.lon,msg.relative_alt)
+					self.lat = (msg.lat) / (10000000.0)
+					self.lon = (msg.lon) / (10000000.0)
 					self.alt = msg.alt
+					self.heading = (msg.hdg) / (100.0)
 				if msg.get_type() == "MISSION_REQUEST":
 					print("GOT MISSION REQUEST")
-					self.mav.mav.send(wp.wp(msg.seq))
+					self.mav.mav.send(self.wp.wp(msg.seq))
+					print('Sending waypoint {0}'.format(msg.seq))
 				if msg.get_type() == "MISSION_ACK":
 					print('MISSION_ACK %i' % msg.type)
 
@@ -305,12 +323,29 @@ gcs.connect()
 
 previous_speed = 0
 
+output_timer = time.time()
+output_timer_last = time.time()
+
+# Wait for GPS
+while (not gcs.lat):
+	readable, writable, exceptional = select.select([x for x in [ac.mav.fd, gcs.gps, sys.stdin] if x is not None], [], [])
+	gcs.update()
+
+ac.set_point(gcs.lat,gcs.lon,100)
+
 print("Entering main loop...")
 while sys.stdin:
 	readable, writable, exceptional = select.select([x for x in [ac.mav.fd, gcs.gps, sys.stdin] if x is not None], [], [])
 	ac.update()
 	gcs.update()
 	#handle_input()
+
+	#Print every 2 seconds
+	output_timer = time.time()
+	if (output_timer - output_timer_last) > 2:
+		output_timer_last = time.time()
+		print("Aircraft-- Lat: {0:14}, Lon: {1:14}, Heading: {2:6}".format(ac.lat,ac.lon,ac.heading))
+		print("Ground  -- Lat: {0:14}, Lon: {1:14}, Heading: {2:6}".format(gcs.lat,gcs.lon,gcs.heading))
 	
 	# ## Guided Way Point Update
 	# #Add a new guided waypoint if the ground vehicle has moved gcs.update_distance

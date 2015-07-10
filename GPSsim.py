@@ -31,7 +31,7 @@ y = float(input("Enter Starting Latitude (Use positive values for N and negative
 
 while 1:
     
-    #Create a heading for the "reciever"
+    #Create a heading for the "receiver"
     
     h = int(random.randrange(0,3))
     t = random.randrange(min_leg_time_seconds, max_leg_time_seconds)
@@ -108,7 +108,7 @@ while 1:
                 str(time.strftime("%d%m%y")) + \
                 ""+"," + \
                 "*00\n"
-        #print("$GPRMC", time.strftime("%I%M%S.000"), "A", abs(y), str2, abs(x), str1, kt, c, time.strftime("%d%m%y"), "", "*00", sep=',')
+        print(string)
         output.write(string)
 
         #Send a new line every second
