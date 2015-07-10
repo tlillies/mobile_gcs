@@ -79,7 +79,12 @@ class GCS:
 		self.heading = None
 
 		self.update_distance = 100
-		self.wp_distance
+		self.wp_distance = 100
+
+		self.error = True
+		self.active = False
+		self.active_timeout = 0
+		self.active_time = time.time()
 
 	def lat_diff(self):
 		# distance between current lat and lat where last wp was set
@@ -92,27 +97,44 @@ class GCS:
 	def connect(self):
 		try:
 			print("Connecting to GPS...")
-			self.gps = serial.Serial(port=self.port, baudrate=4800)
+			self.gps = serial.Serial(port=self.port, baudrate=4800, timeout=.1)
 			print("Got GPS!")
 		except:
 		    pass
 
 	def update(self):
-		pass
-		# if gps in readable: # GPS dongle data available
-		#     a = gps.readline()
-		#     b = a.split(',')
-		#     if b[0] == "$GPGGA":
-		#         if b[6] is not '0': # check for valid GPS fix
-		#             # Assign GPS to present location, convert decimal minutes to decimal cegrees
-		#             loc['lat'] = float(b[2])/100
-		#             loc['lat'] = divmod(loc['lat'],1)[0]+divmod(loc['lat'],1)[1]*100/60
-		#             if b[3] == 'S' : loc['lat'] = -loc['lat']
-		#             loc['lon'] = float(b[4])/100
-		#             loc['lon'] = divmod(loc['lon'],1)[0]+divmod(loc['lon'],1)[1]*100/60
-		#             if b[5] == 'W' : loc['lon'] = -loc['lon']
-		#             loc['alt'] = float(b[9])
-		#             #print loc
+		global readable
+		#Check for timeout
+		self.active_timeout = time.time() - self.active_time
+		if self.active_timeout > 3:
+			print("LOST GCS GPS!!!")
+			self.active = False
+			self.active_time = time.time()
+
+		# Get and handle message
+		if self.gps in readable:
+			raw = self.gps.readline()
+			self.active_time = time.time()
+			self.active = True
+			data = raw.split(',')
+			if data[0] == "$GPRMC":
+				if data[2] == 'A': # check for valid GPS fix
+					self.lat = data[3]
+					self.lon = data[5]
+					self.heading = data[8]
+					self.error = False
+					print("lat {0}, lon {1}, heading {2}".format(self.lat,self.lon,self.heading))
+				if data[2] == 'V':
+					self.error = True
+		            # Assign GPS to present location, convert decimal minutes to decimal cegrees
+		            #loc['lat'] = float(b[2])/100
+		            #loc['lat'] = divmod(loc['lat'],1)[0]+divmod(loc['lat'],1)[1]*100/60
+		            #if b[3] == 'S' : loc['lat'] = -loc['lat']
+		            #loc['lon'] = float(b[4])/100
+		            #loc['lon'] = divmod(loc['lon'],1)[0]+divmod(loc['lon'],1)[1]*100/60
+		            #if b[5] == 'W' : loc['lon'] = -loc['lon']
+		            #loc['alt'] = float(b[9])
+		            #print loc
 
 
 class Aircraft:
@@ -202,7 +224,7 @@ class Aircraft:
 		pass
 
 	def update(self):
-		msg = self.mav.recv_match(blocking=False)
+		global readable
 
 		self.heartbeat_timeout = time.time() - self.heartbeat_time
 		if self.heartbeat_timeout > 3:
@@ -211,54 +233,56 @@ class Aircraft:
 			self.heartbeat_time = time.time()
 
 		# Handle message
-		if msg:
-			if msg.get_type() == "HEARTBEAT":
-				self.heartbeat_time = time.time()
-				self.heartbeat = True
-			if msg.get_type() == "GLOBAL_POSITION_INT":
-				#print(msg.lat,msg.lon,msg.relative_alt)
-				self.lat = msg.lat
-				self.lon = msg.lon
-				self.alt = msg.alt
-			if msg.get_type() == "MISSION_REQUEST":
-				print("GOT MISSION REQUEST")
-				self.mav.mav.send(wp.wp(msg.seq))
-			if msg.get_type() == "MISSION_ACK":
-				print('MISSION_ACK %i' % msg.type)
+		if self.mav.fd in readable:
+			msg = self.mav.recv_match(blocking=False)
+			if msg:
+				#print(msg)
+				if msg.get_type() == "HEARTBEAT":
+					self.heartbeat_time = time.time()
+					self.heartbeat = True
+					print("heartbeat")
+				if msg.get_type() == "GLOBAL_POSITION_INT":
+					print(msg.lat,msg.lon,msg.relative_alt)
+					self.lat = msg.lat
+					self.lon = msg.lon
+					self.alt = msg.alt
+				if msg.get_type() == "MISSION_REQUEST":
+					print("GOT MISSION REQUEST")
+					self.mav.mav.send(wp.wp(msg.seq))
+				if msg.get_type() == "MISSION_ACK":
+					print('MISSION_ACK %i' % msg.type)
 
 def handle_input():
 	global ac
 	global gcs
+	global readable
 
 	timeout = 0.01 #timeout for read from sdtin
 	
 	try:
-		ready = select.select([sys.stdin], [], [], timeout)[0]
-
-		if ready:
-			for file in ready:
-				line = file.readline()
-				match = re.search(r'(\w+) (\w+) (\S+)', line)
-				if match:
-					if match.group(1) == 'set':
-						if match.group(2) == 'minspeed':
-							print("SET MINIMUM ALT TO {0}".format(match.group(3)))
-						elif match.group(2) == 'maxspeed':	
-							print("SET MAXIMUM ALT TO {0}".format(match.group(3)))
-						elif match.group(2) == 'minalt':
-							print("SET MINIMUM ALT TO {0}".format(match.group(3)))
-						elif match.group(2) == 'maxalt':
-							print("SET MAXIUM ALT TO {0}".format(match.group(3)))
-						elif match.group(2) == 'point':
-							print("SET POINT TO {0}".format(match.group(3)))
-						elif match.group(2) == 'alt':
-							print('SET ALT TO {0}'.format(match.group(3)))
-						else:
-							print("NOT A KNOWN COMMAND: {0}".format(match.group(2)))
+		if sys.std in readable:
+			line = sys.stdin.readline()
+			match = re.search(r'(\w+) (\w+) (\S+)', line)
+			if match:
+				if match.group(1) == 'set':
+					if match.group(2) == 'minspeed':
+						print("SET MINIMUM ALT TO {0}".format(match.group(3)))
+					elif match.group(2) == 'maxspeed':	
+						print("SET MAXIMUM ALT TO {0}".format(match.group(3)))
+					elif match.group(2) == 'minalt':
+						print("SET MINIMUM ALT TO {0}".format(match.group(3)))
+					elif match.group(2) == 'maxalt':
+						print("SET MAXIUM ALT TO {0}".format(match.group(3)))
+					elif match.group(2) == 'point':
+						print("SET POINT TO {0}".format(match.group(3)))
+					elif match.group(2) == 'alt':
+						print('SET ALT TO {0}'.format(match.group(3)))
 					else:
-						print("NOT A KNOWN COMMAND: {0}".format(match.group(1)))
+						print("NOT A KNOWN COMMAND: {0}".format(match.group(2)))
 				else:
-					print('COMMAND NOT FORMATED PROPERLY')
+					print("NOT A KNOWN COMMAND: {0}".format(match.group(1)))
+			else:
+				print('COMMAND NOT FORMATED PROPERLY')
 
 	except:
 		print("Couldn't read from stdin")
@@ -275,49 +299,50 @@ ac = Aircraft(host)
 ac.connect()
 
 # GPS dongle port
-gps_port = '/dev/ttyUSB1'
+gps_port = '/tmp/ttyV0'
 gcs = GCS(gps_port)
-#gcs.connect()
+gcs.connect()
 
 previous_speed = 0
 
 print("Entering main loop...")
 while sys.stdin:
+	readable, writable, exceptional = select.select([x for x in [ac.mav.fd, gcs.gps, sys.stdin] if x is not None], [], [])
 	ac.update()
 	gcs.update()
-	handle_input()
+	#handle_input()
 	
-	## Guided Way Point Update
-	#Add a new guided waypoint if the ground vehicle has moved gcs.update_distance
-	delta_x,delta_y = LatLon2Dist(gcs.lat_diff(),gcs.lon_diff(), gcs.lat)
-	dist_moved = sqrt((delta_x*delta_x) + (delta_y*delta_y))
-	if dist_moved > gcs.update_distance:
-		#Calculate x and y distance from car based off of heading
-		y = gcs.wp_distance * math.cos(math.radians(gcs.heading))
-		x = gcs.wp_distance * math.sin(math.radians(gcs.heading))
+	# ## Guided Way Point Update
+	# #Add a new guided waypoint if the ground vehicle has moved gcs.update_distance
+	# delta_x,delta_y = LatLon2Dist(gcs.lat_diff(),gcs.lon_diff(), gcs.lat)
+	# dist_moved = sqrt((delta_x*delta_x) + (delta_y*delta_y))
+	# if dist_moved > gcs.update_distance:
+	# 	#Calculate x and y distance from car based off of heading
+	# 	y = gcs.wp_distance * math.cos(math.radians(gcs.heading))
+	# 	x = gcs.wp_distance * math.sin(math.radians(gcs.heading))
 
-		# Calculate lat/lon and set guided wp
-		lat, lon = Dist2LatLon(gcs.lat,gcs.lon,x,y)
-		ac.set_point(lat,lon,alt)
+	# 	# Calculate lat/lon and set guided wp
+	# 	lat, lon = Dist2LatLon(gcs.lat,gcs.lon,x,y)
+	# 	ac.set_point(lat,lon,alt)
 
-		# tag gcs location for next distance calculation
-		gcs.lat_wp = gcs.lat
-		gcs.lon_wp = gcs.lon
+	# 	# tag gcs location for next distance calculation
+	# 	gcs.lat_wp = gcs.lat
+	# 	gcs.lon_wp = gcs.lon
 
 
-	## Speed controller
-	# Get distance between car and ac. x east/west, y north/south
-	ac_x,ac_y = LatLon2Dist(gcs.lat-ac.lat,gcs.lon-ac.lon, gcs.lat)
-	# Calculate the position of ac relative to car
-	alpha = gcs.heading #math.atan2(ay_y/ac_x)
-	ac.rel_y = (-1)*x*math.sin(alpha) + y*math.cos(alpha)
-	ac.rel_x = x*math.cos(alpha) + y*math.cos(alpha)
-	# Calculate error
-	error = ac.set_y - ac.rel_y
-	# Calculate corrected speed
-	p_offset = error * gain
-	speed = gcs.speed + p_offset
-	# Update speed if changed
-	if speed != previous_speed:
-		ac.set_speed(speed)
-		previous_speed = speed
+	# ## Speed controller
+	# # Get distance between car and ac. x east/west, y north/south
+	# ac_x,ac_y = LatLon2Dist(gcs.lat-ac.lat,gcs.lon-ac.lon, gcs.lat)
+	# # Calculate the position of ac relative to car
+	# alpha = gcs.heading #math.atan2(ay_y/ac_x)
+	# ac.rel_y = (-1)*x*math.sin(alpha) + y*math.cos(alpha)
+	# ac.rel_x = x*math.cos(alpha) + y*math.cos(alpha)
+	# # Calculate error
+	# error = ac.set_y - ac.rel_y
+	# # Calculate corrected speed
+	# p_offset = error * gain
+	# speed = gcs.speed + p_offset
+	# # Update speed if changed
+	# if speed != previous_speed:
+	# 	ac.set_speed(speed)
+	# 	previous_speed = speed
