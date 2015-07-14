@@ -1,0 +1,29 @@
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>MOBILE GCS</name>
+    <visibility>1</visibility>
+    <Style id="gcs">
+      <IconStyle>
+        <scale>1.2</scale>
+        <heading>90</heading>
+        <Icon>
+          <href>http://maps.google.com/mapfiles/kml/shapes/truck.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
+    <Folder id="fid">
+      <name>f name</name>
+      <description>f description</description>
+      <visibility>1</visibility>
+    </Folder>
+    <Placemark>
+      <name>MOBILE GCS</name>
+      <visibility>1</visibility>
+      <styleUrl>gcs</styleUrl>
+      <Point>
+        <altitudeMode>relativeToGround</altitudeMode>
+        <coordinates>-35.381642,149.244397,0.000000</coordinates>
+      </Point>
+    </Placemark>
+  </Document>
+</kml>

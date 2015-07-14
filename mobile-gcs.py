@@ -171,6 +171,7 @@ class Aircraft:
 		self.lat = None
 		self.lon = None
 		self.alt = None
+		self.relative_alt = None
 
 		# set point of the wp in lat/lon/alt
 		self.set_lat = None
@@ -223,21 +224,61 @@ class Aircraft:
 		frame = mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT
 		radius = 10
 		current = 2  # flag for guided mode
-		self.wp = mavwp.MAVWPLoader()
+		#self.wp = mavwp.MAVWPLoader()
 
-		self.wp.add(mavutil.mavlink.MAVLink_mission_item_message(self.mav.target_system,
+		# self.wp.add(mavutil.mavlink.MAVLink_mission_item_message(self.mav.target_system,
+  #           self.mav.target_component,
+  #           seq,
+  #           frame,
+  #           mavutil.mavlink.MAV_CMD_NAV_WAYPOINT,
+  #           0, 0, 0, radius, 0, 0,
+  #           self.set_lat,self.set_lon,self.set_alt))
+		#self.mav.waypoint_clear_all_send()                                     
+		#self.mav.waypoint_count_send(self.wp.count())  
+		msg = mavutil.mavlink.MAVLink_mission_item_message(self.mav.target_system,
             self.mav.target_component,
             seq,
             frame,
             mavutil.mavlink.MAV_CMD_NAV_WAYPOINT,
-            0, 0, 0, radius, 0, 0,
-            self.set_lat,self.set_lon,self.set_alt))
-		self.mav.waypoint_clear_all_send()                                     
-		self.mav.waypoint_count_send(self.wp.count())  
+            2, 0, 0, radius, 1.0, 0, lat, lon, alt)
+		# rally = mavutil.mavlink.MAVLink_mission_item_message(self.mav.target_system,
+  #           self.mav.target_component,
+  #           seq,
+  #           frame,
+  #           mavutil.mavlink.MAV_CMD_DO_NAV_WAYPOINT,
+  #           0, 0, 0, speed, -1, 0, 0, 0, 0)
+		self.mav.mav.send(msg)
+		print("Sent position!")
 
 	def set_speed(self, speed):
-		# set new speed of ac
-		pass
+		msg = mavutil.mavlink.MAVLink_command_long_message(self.mav.target_system,
+            self.mav.target_component,
+            seq,
+            frame,
+            mavutil.mavlink.MAV_CMD_DO_CHANGE_SPEED,
+            0, 0, 0, speed, -1, 0, 0, 0, 0)
+
+	def set_mode(self, mode):
+		msg = mavutil.mavlink.MAVLink_set_mode_message(self.mav.target_system,
+            mode,
+            0)
+
+	def rtl(self):
+		msg = mavutil.mavlink.MAVLink_command_long_message(self.mav.target_system,
+            self.mav.target_component,
+            seq,
+            frame,
+            mavutil.mavlink.MAV_CMD_RETURN_TO_LAUNCH,
+            0, 0, 0, 0, 0, 0, 0, 0, 0)
+
+	def set_home(self):
+		msg = mavutil.mavlink.MAVLink_mission_item_message(self.mav.target_system,
+            self.mav.target_component,
+            seq,
+            frame,
+            mavutil.mavlink.MAV_CMD_DO_SET_HOME,
+            0, 0, 1, 0, 0, 0, 0, 0, 0)
+		
 
 	def update(self):
 		global readable
@@ -262,10 +303,11 @@ class Aircraft:
 					self.lat = (msg.lat) / (10000000.0)
 					self.lon = (msg.lon) / (10000000.0)
 					self.alt = msg.alt
+					self.relative_alt = (msg.relative_alt) / (1000.0)
 					self.heading = (msg.hdg) / (100.0)
 				if msg.get_type() == "MISSION_REQUEST":
 					print("GOT MISSION REQUEST")
-					self.mav.mav.send(self.wp.wp(msg.seq))
+					#self.mav.mav.send(self.wp.wp(msg.seq))
 					print('Sending waypoint {0}'.format(msg.seq))
 				if msg.get_type() == "MISSION_ACK":
 					print('MISSION_ACK %i' % msg.type)
@@ -307,6 +349,10 @@ def handle_input():
 		exit(0)
 
 
+UDP_IP = "127.0.0.1"
+UDP_PORT = 5005
+sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+
 # Hardcoded location (GPS device used if available)
 loc = {'lat':33.6074232, 'lon':-102.0425716, 'alt':1004}
 heading = 245
@@ -332,6 +378,7 @@ while (not gcs.lat):
 	gcs.update()
 
 ac.set_point(gcs.lat,gcs.lon,100)
+alt = 100
 
 print("Entering main loop...")
 while sys.stdin:
@@ -342,27 +389,33 @@ while sys.stdin:
 
 	#Print every 2 seconds
 	output_timer = time.time()
-	if (output_timer - output_timer_last) > 2:
+	if (output_timer - output_timer_last) > 1:
 		output_timer_last = time.time()
-		print("Aircraft-- Lat: {0:14}, Lon: {1:14}, Heading: {2:6}".format(ac.lat,ac.lon,ac.heading))
-		print("Ground  -- Lat: {0:14}, Lon: {1:14}, Heading: {2:6}".format(gcs.lat,gcs.lon,gcs.heading))
+		#print("Aircraft-- Lat: {0:14}, Lon: {1:14}, Heading: {2:6}".format(ac.lat,ac.lon,ac.heading))
+		#print("Ground  -- Lat: {0:14}, Lon: {1:14}, Heading: {2:6}".format(gcs.lat,gcs.lon,gcs.heading))
+		ac_msg = '{"type":"ac","lat":' + str(ac.lat) + ',"lon":' + str(ac.lon) + ',"alt":' + str(ac.relative_alt) + ',"heading":' + str(ac.heading) + '}'
+		wp_msg = '{"type":"wp","lat":' + str(ac.set_lat) + ',"lon":' + str(ac.set_lon) + ',"alt":' + str(ac.set_alt) + ',"heading":' + str(0) + '}'
+		gcs_msg = '{"type":"gcs","lat":' + str(gcs.lat) + ',"lon":' + str(gcs.lon) + ',"alt":' + str(0.0) + ',"heading":' + str(gcs.heading) +'}'
+		sock.sendto(ac_msg, (UDP_IP, UDP_PORT))
+		sock.sendto(wp_msg, (UDP_IP, UDP_PORT))
+		sock.sendto(gcs_msg, (UDP_IP, UDP_PORT))
 	
-	# ## Guided Way Point Update
-	# #Add a new guided waypoint if the ground vehicle has moved gcs.update_distance
-	# delta_x,delta_y = LatLon2Dist(gcs.lat_diff(),gcs.lon_diff(), gcs.lat)
-	# dist_moved = sqrt((delta_x*delta_x) + (delta_y*delta_y))
-	# if dist_moved > gcs.update_distance:
-	# 	#Calculate x and y distance from car based off of heading
-	# 	y = gcs.wp_distance * math.cos(math.radians(gcs.heading))
-	# 	x = gcs.wp_distance * math.sin(math.radians(gcs.heading))
+	## Guided Way Point Update
+	#Add a new guided waypoint if the ground vehicle has moved gcs.update_distance
+	delta_x,delta_y = LatLon2Dist(ac.set_lat-gcs.lat, ac.set_lon-gcs.lon, gcs.lat)
+	dist_moved = math.sqrt((delta_x*delta_x) + (delta_y*delta_y))
+	if dist_moved > gcs.update_distance:
+		#Calculate x and y distance from car based off of heading
+		y = gcs.wp_distance * math.cos(math.radians(gcs.heading))
+		x = gcs.wp_distance * math.sin(math.radians(gcs.heading))
 
-	# 	# Calculate lat/lon and set guided wp
-	# 	lat, lon = Dist2LatLon(gcs.lat,gcs.lon,x,y)
-	# 	ac.set_point(lat,lon,alt)
+		# Calculate lat/lon and set guided wp
+		lat, lon = Dist2LatLon(gcs.lat,gcs.lon,x,y)
+		ac.set_point(lat,lon,alt)
 
-	# 	# tag gcs location for next distance calculation
-	# 	gcs.lat_wp = gcs.lat
-	# 	gcs.lon_wp = gcs.lon
+		# tag gcs location for next distance calculation
+		gcs.lat_wp = gcs.lat
+		gcs.lon_wp = gcs.lon
 
 
 	# ## Speed controller
