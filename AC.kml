@@ -1,23 +1,23 @@
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>MOBILE GCS</name>
+    <name>AC</name>
     <visibility>1</visibility>
-    <Style id="sn_van">
+    <Style id="ac">
       <IconStyle>
         <scale>1.2</scale>
-        <heading>-90.0</heading>
+        <heading>3</heading>
         <Icon>
-          <href>http://maps.google.com/mapfiles/kml/shapes/truck.png</href>
+          <href>https://maps.google.com/mapfiles/kml/shapes/airports.png</href>
         </Icon>
       </IconStyle>
     </Style>
     <Placemark>
-      <name>MOBILE GCS</name>
+      <name>AC</name>
       <visibility>1</visibility>
-      <styleUrl>sn_van</styleUrl>
+      <styleUrl>ac</styleUrl>
       <Point>
         <altitudeMode>relativeToGround</altitudeMode>
-        <coordinates>149.261324,-35.361842,0.000000</coordinates>
+        <coordinates>149.261144,-35.361896,99.990000</coordinates>
       </Point>
     </Placemark>
   </Document>

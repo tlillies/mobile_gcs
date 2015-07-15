@@ -46,7 +46,7 @@ def Dist2LatLon(lat,lon,dn,de):
 	dLon = de/(re*math.cos(math.pi*lat/180))
 
 	lat0 = lat + dLat * 180/math.pi
-	lon0 = lon + dLat * 180/math.pi
+	lon0 = lon + dLon * 180/math.pi
 
 	return lat0, lon0
 
@@ -71,6 +71,10 @@ class GCS:
 		self.lon_wp = None
 		self.alt_wp = None
 
+		self.lastset_lat = None
+		self.lastset_lon = None
+		self.lastset_alt = None
+
 		self.port= port
 		self.gps = None
 
@@ -78,8 +82,8 @@ class GCS:
 		self.speed = None
 		self.heading = None
 
-		self.update_distance = 100
-		self.wp_distance = 100
+		self.update_distance = 25
+		self.wp_distance = 250
 
 		self.error = True
 		self.active = False
@@ -101,6 +105,11 @@ class GCS:
 			print("Got GPS!")
 		except:
 		    print("GPS CONECT FAILED")
+
+	def set_point(self):
+		self.lastset_lat = self.lat
+		self.lastset_lon = self.lon
+		self.lastset_alt = self.alt
 
 	def update(self):
 		global readable
@@ -222,7 +231,7 @@ class Aircraft:
 
 		seq = 0
 		frame = mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT
-		radius = 10
+		radius = 0
 		current = 2  # flag for guided mode
 		#self.wp = mavwp.MAVWPLoader()
 
@@ -248,20 +257,24 @@ class Aircraft:
   #           mavutil.mavlink.MAV_CMD_DO_NAV_WAYPOINT,
   #           0, 0, 0, speed, -1, 0, 0, 0, 0)
 		self.mav.mav.send(msg)
-		print("Sent position!")
+		#self.mav.mav.send(rally)
+		#print("Sent position!")
 
 	def set_speed(self, speed):
+		if speed < 1:
+			speed = 1
+
 		msg = mavutil.mavlink.MAVLink_command_long_message(self.mav.target_system,
             self.mav.target_component,
-            seq,
-            frame,
             mavutil.mavlink.MAV_CMD_DO_CHANGE_SPEED,
-            0, 0, 0, speed, -1, 0, 0, 0, 0)
+            0, 1, speed, 0, 0, 0, 0, 0)
+		self.mav.mav.send(msg)
 
 	def set_mode(self, mode):
 		msg = mavutil.mavlink.MAVLink_set_mode_message(self.mav.target_system,
             mode,
             0)
+		self.mav.mav.send(msg)
 
 	def rtl(self):
 		msg = mavutil.mavlink.MAVLink_command_long_message(self.mav.target_system,
@@ -311,6 +324,7 @@ class Aircraft:
 					print('Sending waypoint {0}'.format(msg.seq))
 				if msg.get_type() == "MISSION_ACK":
 					print('MISSION_ACK %i' % msg.type)
+					pass
 
 def handle_input():
 	global ac
@@ -354,8 +368,8 @@ UDP_PORT = 5005
 sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
 
 # Hardcoded location (GPS device used if available)
-loc = {'lat':33.6074232, 'lon':-102.0425716, 'alt':1004}
-heading = 245
+#loc = {'lat':33.6074232, 'lon':-102.0425716, 'alt':1004}
+#heading = 245
 
 # Autopilot connection
 host = "udpin:0.0.0.0:14550"
@@ -378,7 +392,17 @@ while (not gcs.lat):
 	gcs.update()
 
 ac.set_point(gcs.lat,gcs.lon,100)
+gcs.set_point()
 alt = 100
+
+# Wait for AC GPS
+while (not ac.lat):
+	readable, writable, exceptional = select.select([x for x in [ac.mav.fd, gcs.gps, sys.stdin] if x is not None], [], [])
+	ac.update()
+
+gain = .1
+
+speed_time = time.time()
 
 print("Entering main loop...")
 while sys.stdin:
@@ -402,35 +426,42 @@ while sys.stdin:
 	
 	## Guided Way Point Update
 	#Add a new guided waypoint if the ground vehicle has moved gcs.update_distance
-	delta_x,delta_y = LatLon2Dist(ac.set_lat-gcs.lat, ac.set_lon-gcs.lon, gcs.lat)
+	delta_x,delta_y = LatLon2Dist(gcs.lastset_lat-gcs.lat, gcs.lastset_lon-gcs.lon, gcs.lat)
 	dist_moved = math.sqrt((delta_x*delta_x) + (delta_y*delta_y))
 	if dist_moved > gcs.update_distance:
+		#print("dela_x:{0} dela_y:{1} distance:{2}".format(delta_x,delta_y, dist_moved))
 		#Calculate x and y distance from car based off of heading
 		y = gcs.wp_distance * math.cos(math.radians(gcs.heading))
 		x = gcs.wp_distance * math.sin(math.radians(gcs.heading))
-
+		#print("x:{0} y:{1}".format(x,y))
 		# Calculate lat/lon and set guided wp
-		lat, lon = Dist2LatLon(gcs.lat,gcs.lon,x,y)
+		lat, lon = Dist2LatLon(gcs.lat,gcs.lon,y,x)
 		ac.set_point(lat,lon,alt)
+		gcs.set_point() #Set the current point to gcs update position
 
 		# tag gcs location for next distance calculation
 		gcs.lat_wp = gcs.lat
 		gcs.lon_wp = gcs.lon
 
 
-	# ## Speed controller
-	# # Get distance between car and ac. x east/west, y north/south
-	# ac_x,ac_y = LatLon2Dist(gcs.lat-ac.lat,gcs.lon-ac.lon, gcs.lat)
-	# # Calculate the position of ac relative to car
-	# alpha = gcs.heading #math.atan2(ay_y/ac_x)
-	# ac.rel_y = (-1)*x*math.sin(alpha) + y*math.cos(alpha)
-	# ac.rel_x = x*math.cos(alpha) + y*math.cos(alpha)
-	# # Calculate error
-	# error = ac.set_y - ac.rel_y
-	# # Calculate corrected speed
-	# p_offset = error * gain
-	# speed = gcs.speed + p_offset
-	# # Update speed if changed
-	# if speed != previous_speed:
-	# 	ac.set_speed(speed)
-	# 	previous_speed = speed
+	## Speed controller
+	# Get distance between car and ac. x east/west, y north/south
+	ac_x,ac_y = LatLon2Dist(gcs.lat-ac.lat,gcs.lon-ac.lon, gcs.lat)
+	ac_y *= -1
+	ac_x *= -1
+	# Calculate the position of ac relative to car
+	alpha = math.radians(gcs.heading * (-1))
+	ac.rel_x = ac_x*math.cos(alpha) + ac_y*math.sin(alpha)
+	ac.rel_y = (-1)*ac_x*math.sin(alpha) + ac_y*math.cos(alpha)
+	# Calculate error
+	error = ac.rel_y - ac.set_y
+	# Calculate corrected speed
+	p_offset = error * gain *-1
+	speed = gcs.speed + p_offset
+	# Update speed if changed
+	if speed != previous_speed:
+		if (time.time() - speed_time) > 1:
+			ac.set_speed(speed)
+			previous_speed = speed
+			print("CMDSpeed:{0} GCSSpeed:{1} Error:{2} Rel_y:{3} AC_y:{4} AC_x:{5}".format(speed,gcs.speed,error,ac.rel_y,ac_y,ac_x))
+			speed_time = time.time()

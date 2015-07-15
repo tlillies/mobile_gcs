@@ -9,7 +9,7 @@ UDP_PORT = 5005
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind((UDP_IP, UDP_PORT))
 
-def kml_write(x, y, alt, c, type):
+def make_kml(x, y, alt, c, type):
 
 
 	ns = '{http://www.opengis.net/kml/2.2}'
@@ -22,7 +22,7 @@ def kml_write(x, y, alt, c, type):
 	elif type == "ac":
 		p= kml.Placemark(ns, name='AC', styleUrl='ac')
 		s = styles.Style(id='ac')
-		IS = styles.IconStyle(scale=1.2, icon_href='https://maps.google.com/mapfiles/kml/shapes/airports.png', heading=(int(c) - 90))
+		IS = styles.IconStyle(scale=1.2, icon_href='https://maps.google.com/mapfiles/kml/shapes/airports.png', heading=(int(c)))
 		s.append_style(IS)
 		d = kml.Document(ns=ns, name='AC')
 	elif type == "gcs":
@@ -37,7 +37,7 @@ def kml_write(x, y, alt, c, type):
 	
 
 	geom = Geometry()
-	geom.geometry = Point(float(x), float(y), float(alt))
+	geom.geometry = Point(float(y), float(x), float(alt))
 	geom.altitude_mode = 'relativeToGround'
 	p.geometry = geom
 	d.append_style(s)
@@ -71,25 +71,25 @@ while True:
 		alt = parsed_json['alt']
 	if parsed_json['heading']:
 		heading = parsed_json['heading']
-	d = kml_write(lat,lon,alt,heading,type)
+	d = make_kml(lat,lon,alt,heading,type)
 
 	ns = '{http://www.opengis.net/kml/2.2}'
-	k = kml.KML(ns=ns)
-	k.append(d)
 
 	if type == 'ac':
-		ac = True
-	if type == 'wp':
-		wp = True
-	if type == 'gcs':
-		gcs = True
-
-	if ac and wp and gcs:
-		kmlfile = open('TEST.kml',"w")
-		kmlfile.write(k.to_string(prettyprint=True))
+		ac_k = kml.KML(ns=ns)
+		ac_k.append(d)
+		kmlfile = open('AC.kml',"w")
+		kmlfile.write(ac_k.to_string(prettyprint=True))
 		kmlfile.close()
-		ac = False
-		wp = False
-		gcs = False
-	#except: 
-	#	pass
+	if type == 'wp':
+		wp_k = kml.KML(ns=ns)
+		wp_k.append(d)
+		kmlfile = open('WP.kml',"w")
+		kmlfile.write(wp_k.to_string(prettyprint=True))
+		kmlfile.close()
+	if type == 'gcs':
+		gcs_k = kml.KML(ns=ns)
+		gcs_k.append(d)
+		kmlfile = open('GCS.kml',"w")
+		kmlfile.write(gcs_k.to_string(prettyprint=True))
+		kmlfile.close()
