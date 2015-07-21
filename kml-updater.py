@@ -31,6 +31,12 @@ def make_kml(x, y, alt, c, type):
 		IS = styles.IconStyle(scale=1.2, icon_href='http://maps.google.com/mapfiles/kml/shapes/truck.png', heading=(int(c) - 90))
 		s.append_style(IS)
 		d = kml.Document(ns=ns, name='MOBILE GCS')
+	elif type == "set":
+		p= kml.Placemark(ns, name='SET POINT', styleUrl='set_point')
+		s = styles.Style(id='set_point')
+		IS = styles.IconStyle(scale=1.2, icon_href='https://maps.google.com/mapfiles/kml/pal4/icon58.png', heading=(int(c) - 90))
+		s.append_style(IS)
+		d = kml.Document(ns=ns, name='SET POINT')
 	else:
 		return
 
@@ -44,10 +50,6 @@ def make_kml(x, y, alt, c, type):
 	d.append(p)
 
 	return d
-	
-ac = False
-wp = False
-gcs = False
 
 while True:
 	type = 0
@@ -71,6 +73,7 @@ while True:
 		alt = parsed_json['alt']
 	if parsed_json['heading']:
 		heading = parsed_json['heading']
+
 	d = make_kml(lat,lon,alt,heading,type)
 
 	ns = '{http://www.opengis.net/kml/2.2}'
@@ -92,4 +95,10 @@ while True:
 		gcs_k.append(d)
 		kmlfile = open('GCS.kml',"w")
 		kmlfile.write(gcs_k.to_string(prettyprint=True))
+		kmlfile.close()
+	if type == 'set':
+		set_k = kml.KML(ns=ns)
+		set_k.append(d)
+		kmlfile = open('SET.kml',"w")
+		kmlfile.write(set_k.to_string(prettyprint=True))
 		kmlfile.close()

@@ -1,23 +1,23 @@
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>AC</name>
+    <name>SET POINT</name>
     <visibility>1</visibility>
-    <Style id="ac">
+    <Style id="set_point">
       <IconStyle>
         <scale>1.2</scale>
-        <heading>277</heading>
+        <heading>-90</heading>
         <Icon>
-          <href>https://maps.google.com/mapfiles/kml/shapes/airports.png</href>
+          <href>https://maps.google.com/mapfiles/kml/pal4/icon58.png</href>
         </Icon>
       </IconStyle>
     </Style>
     <Placemark>
-      <name>AC</name>
+      <name>SET POINT</name>
       <visibility>1</visibility>
-      <styleUrl>ac</styleUrl>
+      <styleUrl>set_point</styleUrl>
       <Point>
         <altitudeMode>relativeToGround</altitudeMode>
-        <coordinates>149.139780,-35.382258,98.350000</coordinates>
+        <coordinates>149.140072,-35.381868,100.000000</coordinates>
       </Point>
     </Placemark>
   </Document>

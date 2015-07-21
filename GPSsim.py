@@ -15,8 +15,8 @@ max_leg_time_seconds = 40
 
 #Type .0 after the speeds in kts so that it is correctly defined as a float
 
-min_speed_kt = 10.0
-max_speed_kt = 20.0
+min_speed_kt = 25.0
+max_speed_kt = 35.0
 delay = 1
 
 def kml_write(x, y, c):
@@ -71,7 +71,7 @@ while True:
     
     #Create a heading and time for the "reciever" during the leg
     
-    h = int(random.randrange(0,3))
+    h = int(random.randrange(0,4))
     t = random.randrange(min_leg_time_seconds, max_leg_time_seconds)
 
     #Convert kts into min/sec

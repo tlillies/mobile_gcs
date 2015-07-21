@@ -5,7 +5,6 @@
     <Style id="gcs">
       <IconStyle>
         <scale>1.2</scale>
-        <heading>-90</heading>
         <Icon>
           <href>http://maps.google.com/mapfiles/kml/shapes/truck.png</href>
         </Icon>
@@ -17,7 +16,7 @@
       <styleUrl>gcs</styleUrl>
       <Point>
         <altitudeMode>relativeToGround</altitudeMode>
-        <coordinates>149.261325,-35.361842,0.000000</coordinates>
+        <coordinates>149.140072,-35.381868,0.000000</coordinates>
       </Point>
     </Placemark>
   </Document>
