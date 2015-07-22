@@ -10,13 +10,13 @@ import serial
 from fastkml import kml, styles
 from fastkml.geometry import Geometry, Point, LineString, Polygon
 
-min_leg_time_seconds = 20
-max_leg_time_seconds = 40
+min_leg_time_seconds = 10
+max_leg_time_seconds = 20
 
 #Type .0 after the speeds in kts so that it is correctly defined as a float
 
 min_speed_kt = 25.0
-max_speed_kt = 35.0
+max_speed_kt = 40.0
 delay = 1
 
 def kml_write(x, y, c):
@@ -71,7 +71,7 @@ while True:
     
     #Create a heading and time for the "reciever" during the leg
     
-    h = int(random.randrange(0,4))
+    h = int(random.randrange(0,1))
     t = random.randrange(min_leg_time_seconds, max_leg_time_seconds)
 
     #Convert kts into min/sec
