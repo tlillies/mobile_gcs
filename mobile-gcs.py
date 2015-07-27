@@ -235,7 +235,7 @@ class Aircraft:
 		self.rallypoint.target_component = self.mav.target_component
 		self.mav.mav.send(self.rallypoint)
 
-	def set_point(self, lat, lon, alt):
+	def set_point(self, lat, lon, alt,gcs):
 		# Set new guided wp for ac
 		self.wp_lat = lat
 		self.wp_lon = lon
@@ -255,7 +255,7 @@ class Aircraft:
 
 		self.mav.mav.send(msg)
 
-		self.rally.move(1,lat,lon)
+		self.rally.move(1,gcs.lat,gcs.lon)
 		self.rallypoint = self.rally.rally_point(0)
 		self.rallypoint.target_system = self.mav.target_system
 		self.rallypoint.target_component = self.mav.target_component
@@ -442,7 +442,7 @@ while (not gcs.lat):
 	readable, writable, exceptional = select.select([x for x in [ac.mav.fd, gcs.gps, sys.stdin] if x is not None], [], [])
 	gcs.update()
 
-ac.set_point(gcs.lat,gcs.lon,100)
+ac.set_point(gcs.lat,gcs.lon,100,gcs)
 gcs.set_point()
 alt = 100
 
@@ -456,6 +456,9 @@ gain = .1
 speed_time = time.time()
 
 speed = 15
+
+lat = gcs.lat
+lon = gcs.lon
 
 print("Entering main loop...")
 while sys.stdin:
@@ -493,6 +496,9 @@ while sys.stdin:
 		sock.sendto(set_msg, (UDP_IP, UDP_PORT))
 		sock.sendto(gcs_msg, (UDP_IP, UDP_PORT))
 
+		# Every one second send mission
+		ac.set_point(lat,lon,ac.set_alt,gcs)
+
 
 	## Guided Way Point Update
 	#Add a new guided waypoint if the ground vehicle has moved gcs.update_distance
@@ -508,7 +514,6 @@ while sys.stdin:
 			print("x:{0} y:{1}".format(x,y))
 		# Calculate lat/lon and set guided wp
 		lat, lon = Dist2LatLon(ac.set_lat,ac.set_lon,y,x)
-		ac.set_point(lat,lon,ac.set_alt)
 		gcs.set_point() #Set the current point to gcs update position
 
 		# tag gcs location for next distance calculation
