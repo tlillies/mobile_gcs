@@ -14,6 +14,21 @@ from pymavlink import mavwp
 import sys
 import select
 
+## Connection settings
+
+# KML
+UDP_IP = "127.0.0.1"
+UDP_PORT = 5005
+sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+
+# Autopilot connection
+ac_host = "udpin:0.0.0.0:14550"
+#ac_host = '/dev/ttyUSB0'
+
+# GPS dongle port
+gps_port = '/tmp/ttyV0'
+
+
 def LatLon2Dist(lat_diff, lon_diff, lat_ref):
     #LatLon2Dist converts differences in lat/lon position to cartesian
     #Inputs:
@@ -411,18 +426,11 @@ def handle_input():
 	 	print("Couldn't read from stdin")
 
 
-UDP_IP = "127.0.0.1"
-UDP_PORT = 5005
-sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+## Setup
 
-# Autopilot connection
-host = "udpin:0.0.0.0:14550"
-#host = '/dev/ttyUSB0'
-ac = Aircraft(host)
+ac = Aircraft(ac_host)
 ac.connect()
 
-# GPS dongle port
-gps_port = '/tmp/ttyV0'
 gcs = GCS(gps_port)
 gcs.connect()
 
