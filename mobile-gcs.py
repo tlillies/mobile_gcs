@@ -29,6 +29,19 @@ ac_host = "udpin:0.0.0.0:14550"
 gps_port = '/tmp/ttyV0'
 
 
+## Gains
+
+gain_p = .0005
+
+
+
+## Flight settings
+
+alt_base = 100
+alt_amp = 0
+alt_per = 0
+
+
 def LatLon2Dist(lat_diff, lon_diff, lat_ref):
     #LatLon2Dist converts differences in lat/lon position to cartesian
     #Inputs:
@@ -344,6 +357,7 @@ def handle_input():
 	global debug_speed
 	global debug_dist
 	global debug_position
+	global debug_alt
 
 	try:
 		if sys.stdin in readable:
@@ -386,6 +400,13 @@ def handle_input():
 						else:
 							print("DEBUG DISTANCE SET OFF")
 							debug_dist = False
+					if match.group(2) == 'alt':
+						if match.group(3) == 'on':
+							print("DEBUG ALT SET ON")
+							debug_alt = True
+						else:
+							print("DEBUG ALT SET OFF")
+							debug_alt = False
 
 				elif match.group(1) == 'set':
 					if match.group(2) == 'alt':
@@ -436,6 +457,8 @@ gcs.connect()
 
 previous_speed = 0
 
+error_prev = 0
+
 output_timer = time.time()
 output_timer_last = time.time()
 
@@ -444,6 +467,7 @@ debug_speed = False
 debug_dist = False
 debug_mission = False
 debug_position = False
+debug_alt = False
 
 # Wait for GPS
 while (not gcs.lat):
@@ -459,9 +483,11 @@ while (not ac.lat):
 	readable, writable, exceptional = select.select([x for x in [ac.mav.fd, gcs.gps, sys.stdin] if x is not None], [], [])
 	ac.update()
 
-gain = .1
+
 
 speed_time = time.time()
+
+time_prev = time.time()
 
 speed = 15
 
@@ -486,14 +512,16 @@ while sys.stdin:
 	ac.set_lat, ac.set_lon = Dist2LatLon(gcs.lat,gcs.lon,dist_y,dist_x)
 
 
-	## Send out data
-	output_timer = time.time()
-	if (output_timer - output_timer_last) > 1:
-		output_timer_last = time.time()
-		if debug_position:
-			print("Aircraft-- Lat: {0:14}, Lon: {1:14}, Heading: {2:6}".format(ac.lat,ac.lon,ac.heading))
-			print("Ground  -- Lat: {0:14}, Lon: {1:14}, Heading: {2:6}".format(gcs.lat,gcs.lon,gcs.heading))
+	## Calculate alt
+	ac.set_alt = alt_base
+	
 
+	## Send out data and update waypoint
+	output_timer = time.time()
+	if (output_timer - output_timer_last) > .2:
+		output_timer_last = time.time()
+		
+		# Sound out JSON data for kml updater
 		ac_msg = '{"type":"ac","lat":' + str(ac.lat) + ',"lon":' + str(ac.lon) + ',"alt":' + str(ac.relative_alt) + ',"heading":' + str(ac.heading) + '}'
 		wp_msg = '{"type":"wp","lat":' + str(ac.wp_lat) + ',"lon":' + str(ac.wp_lon) + ',"alt":' + str(ac.wp_alt) + ',"heading":' + str(0) + '}'
 		set_msg = '{"type":"set","lat":' + str(ac.set_lat) + ',"lon":' + str(ac.set_lon) + ',"alt":' + str(ac.set_alt) + ',"heading":' + str(0) + '}'
@@ -504,22 +532,11 @@ while sys.stdin:
 		sock.sendto(set_msg, (UDP_IP, UDP_PORT))
 		sock.sendto(gcs_msg, (UDP_IP, UDP_PORT))
 
-		# Every one second send mission
-		ac.set_point(lat,lon,ac.set_alt,gcs)
 
-
-	## Guided Way Point Update
-	#Add a new guided waypoint if the ground vehicle has moved gcs.update_distance
-	delta_x,delta_y = LatLon2Dist(gcs.lastset_lat-gcs.lat, gcs.lastset_lon-gcs.lon, gcs.lat)
-	dist_moved = math.sqrt((delta_x*delta_x) + (delta_y*delta_y))
-	if dist_moved > gcs.update_distance:
-		#Calculate x and y distance from car based off of heading
+		# Calculate next waypoint
 		y = gcs.wp_distance * math.cos(math.radians(gcs.heading))
 		x = gcs.wp_distance * math.sin(math.radians(gcs.heading))
 
-		if debug_dist:
-			print("dela_x:{0} dela_y:{1} distance:{2}".format(delta_x,delta_y, dist_moved))
-			print("x:{0} y:{1}".format(x,y))
 		# Calculate lat/lon and set guided wp
 		lat, lon = Dist2LatLon(ac.set_lat,ac.set_lon,y,x)
 		gcs.set_point() #Set the current point to gcs update position
@@ -528,6 +545,19 @@ while sys.stdin:
 		gcs.lat_wp = gcs.lat
 		gcs.lon_wp = gcs.lon
 
+		# Send new waypoint
+		ac.set_point(lat,lon,ac.set_alt,gcs)
+
+
+		# Print out data
+		if debug_position:
+			print("Aircraft-- Lat: {0:14}, Lon: {1:14}, Heading: {2:6}".format(ac.lat,ac.lon,ac.heading))
+			print("Ground  -- Lat: {0:14}, Lon: {1:14}, Heading: {2:6}".format(gcs.lat,gcs.lon,gcs.heading))
+		if debug_alt:
+			print("Set Alt: {0}, Base Alt: {1}, Alt Amp: {2}, Alt Per: {3}".format(ac.set_alt,alt_base,alt_amp,alt_per))
+		if debug_dist:
+			print("dela_x:{0} dela_y:{1}".format(delta_x,delta_y))
+			print("x:{0} y:{1}".format(x,y))
 
 	## Speed controller
 	# Get distance between car and ac. x east/west, y north/south
@@ -541,15 +571,22 @@ while sys.stdin:
 	# Calculate error
 	error = ac.rel_y - ac.set_y
 	# Calculate corrected speed
-	p_offset = error * gain *-1
-	speed = gcs.speed + p_offset
+	p_offset = error * error* gain_p*-1
+	if error < 0:
+		p_offset *= -1
+
+	#d_offset = ((error-error_prev) / (time.time() - time_prev)) * gain_d
+	#time_prev = time.time()
+	#error_prev = error
+
+	speed = gcs.speed + p_offset #+ d_offset
 	# Update speed if changed
 	if speed != previous_speed:
-		if (time.time() - speed_time) > 1:
+		if (time.time() - speed_time) > .2:
 			if speed < 1:
 				speed = 1
 			ac.set_speed(speed)
 			previous_speed = speed
 			if debug:
-				print("CMDSpeed:{0} GCSSpeed:{1} Error:{2} Rel_y:{3} AC_y:{4} AC_x:{5}".format(speed,gcs.speed,error,ac.rel_y,ac_y,ac_x))
+				print("CMDSpeed:{0} GCSSpeed:{1} P:{2} D:{3} Error:{4}".format(speed,gcs.speed,p_offset,d_offset,error))
 			speed_time = time.time()

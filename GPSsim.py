@@ -71,7 +71,7 @@ while True:
     
     #Create a heading and time for the "reciever" during the leg
     
-    h = int(random.randrange(0,1))
+    h = int(random.randrange(0,4))
     t = random.randrange(min_leg_time_seconds, max_leg_time_seconds)
 
     #Convert kts into min/sec
