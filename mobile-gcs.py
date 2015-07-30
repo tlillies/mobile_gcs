@@ -573,9 +573,9 @@ while sys.stdin:
 	# Calculate corrected speed
 	p_offset = error * error
 	if error < 0:
-		p_offset *= -1 * gain_front
+		p_offset *= gain_front
 	else:
-		p_offset *= gain_behind
+		p_offset *= gain_behind *-1
 
 	#d_offset = ((error-error_prev) / (time.time() - time_prev)) * gain_d
 	#time_prev = time.time()
