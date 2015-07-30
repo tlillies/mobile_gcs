@@ -31,8 +31,8 @@ gps_port = '/tmp/ttyV0'
 
 ## Gains
 
-gain_p = .0005
-
+gain_front = .001
+gain_behind = .0005
 
 
 ## Flight settings
@@ -571,9 +571,11 @@ while sys.stdin:
 	# Calculate error
 	error = ac.rel_y - ac.set_y
 	# Calculate corrected speed
-	p_offset = error * error* gain_p*-1
+	p_offset = error * error
 	if error < 0:
-		p_offset *= -1
+		p_offset *= -1 * gain_front
+	else:
+		p_offset *= gain_behind
 
 	#d_offset = ((error-error_prev) / (time.time() - time_prev)) * gain_d
 	#time_prev = time.time()
@@ -588,5 +590,5 @@ while sys.stdin:
 			ac.set_speed(speed)
 			previous_speed = speed
 			if debug:
-				print("CMDSpeed:{0} GCSSpeed:{1} P:{2} D:{3} Error:{4}".format(speed,gcs.speed,p_offset,d_offset,error))
+				print("CMDSpeed:{0} GCSSpeed:{1} Pf:{2} Error:{4}".format(speed,gcs.speed,p_offset,error))
 			speed_time = time.time()
