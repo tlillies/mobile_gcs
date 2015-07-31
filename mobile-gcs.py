@@ -37,9 +37,9 @@ gain_behind = .0005
 
 ## Flight settings
 
-alt_base = 100
-alt_amp = 0
-alt_per = 0
+alt_base = 200
+alt_amp = 100
+alt_fre = .02
 
 
 def LatLon2Dist(lat_diff, lon_diff, lat_ref):
@@ -513,7 +513,7 @@ while sys.stdin:
 
 
 	## Calculate alt
-	ac.set_alt = alt_base
+	ac.set_alt = alt_base + alt_amp * math.sin(alt_fre *time.time())
 	
 
 	## Send out data and update waypoint
@@ -554,7 +554,7 @@ while sys.stdin:
 			print("Aircraft-- Lat: {0:14}, Lon: {1:14}, Heading: {2:6}".format(ac.lat,ac.lon,ac.heading))
 			print("Ground  -- Lat: {0:14}, Lon: {1:14}, Heading: {2:6}".format(gcs.lat,gcs.lon,gcs.heading))
 		if debug_alt:
-			print("Set Alt: {0}, Base Alt: {1}, Alt Amp: {2}, Alt Per: {3}".format(ac.set_alt,alt_base,alt_amp,alt_per))
+			print("Set Alt: {0}, Base Alt: {1}, Alt Amp: {2}, Alt Freq: {3}".format(ac.set_alt,alt_base,alt_amp,alt_fre))
 		if debug_dist:
 			print("dela_x:{0} dela_y:{1}".format(delta_x,delta_y))
 			print("x:{0} y:{1}".format(x,y))
