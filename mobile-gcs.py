@@ -39,7 +39,8 @@ gain_behind = .0005
 
 alt_base = 200
 alt_amp = 100
-alt_fre = .02
+alt_per = 240
+alt_fre = (2*math.pi) / alt_per
 
 
 def LatLon2Dist(lat_diff, lon_diff, lat_ref):
