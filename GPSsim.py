@@ -11,7 +11,7 @@ from fastkml import kml, styles
 from fastkml.geometry import Geometry, Point, LineString, Polygon
 
 min_leg_time_seconds = 10
-max_leg_time_seconds = 20
+max_leg_time_seconds = 60
 
 #Type .0 after the speeds in kts so that it is correctly defined as a float
 

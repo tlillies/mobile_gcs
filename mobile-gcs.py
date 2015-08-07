@@ -112,7 +112,7 @@ class GCS:
 		self.heading = None
 
 		self.update_distance = 25
-		self.wp_distance = 400
+		self.wp_distance = 200
 
 		self.error = True
 		self.active = False
@@ -238,6 +238,9 @@ class Aircraft:
 
 		self.wp = None
 
+		self.wind_speed = None
+		self.wind_direction = None
+
 	def connect(self):
 		print("Connecting to autopilot...")
 		#self.mav = mavutil.mavlink_connection('/dev/ttyACM0', use_native=False,baud=921600, dialect="ardupilotmega")
@@ -264,7 +267,7 @@ class Aircraft:
 		self.rallypoint.target_component = self.mav.target_component
 		self.mav.mav.send(self.rallypoint)
 
-	def set_point(self, lat, lon, alt,gcs):
+	def set_point(self, lat, lon, alt):
 		# Set new guided wp for ac
 		self.wp_lat = lat
 		self.wp_lon = lon
@@ -284,6 +287,7 @@ class Aircraft:
 
 		self.mav.mav.send(msg)
 
+	def set_rally(self,gcs):
 		self.rally.move(1,gcs.lat,gcs.lon)
 		self.rallypoint = self.rally.rally_point(0)
 		self.rallypoint.target_system = self.mav.target_system
@@ -291,10 +295,10 @@ class Aircraft:
 		self.mav.mav.send(self.rallypoint)
 
 	def set_speed(self, speed):
-		if speed < 10:
-			speed = 10
-		if speed > 40:
-			speed = 40
+		if speed < 14:
+			speed = 14
+		if speed > 30:
+			speed = 30
 
 		msg = mavutil.mavlink.MAVLink_param_set_message(self.mav.target_system,
             self.mav.target_component,
@@ -333,6 +337,10 @@ class Aircraft:
 					self.alt = msg.alt
 					self.relative_alt = (msg.relative_alt) / (1000.0)
 					self.heading = (msg.hdg) / (100.0)
+				if msg.get_type() == "WIND":
+					self.wind_speed = msg.speed
+					self.wind_direction = msg.direction
+					print('speed: {0} direction: {1}'.format(self.wind_speed,self.wind_direction))
 				if msg.get_type() == "MISSION_REQUEST":
 					if self.wp:
 						self.mav.mav.send(self.wp.wp(msg.seq))
@@ -475,7 +483,7 @@ while (not gcs.lat):
 	readable, writable, exceptional = select.select([x for x in [ac.mav.fd, gcs.gps, sys.stdin] if x is not None], [], [])
 	gcs.update()
 
-ac.set_point(gcs.lat,gcs.lon,100,gcs)
+ac.set_point(gcs.lat,gcs.lon,100)
 gcs.set_point()
 alt = 100
 
@@ -547,7 +555,8 @@ while sys.stdin:
 		gcs.lon_wp = gcs.lon
 
 		# Send new waypoint
-		ac.set_point(lat,lon,ac.set_alt,gcs)
+		ac.set_point(lat,lon,ac.set_alt)
+		ac.set_rally(gcs)
 
 
 		# Print out data
@@ -578,11 +587,7 @@ while sys.stdin:
 	else:
 		p_offset *= gain_behind *-1
 
-	#d_offset = ((error-error_prev) / (time.time() - time_prev)) * gain_d
-	#time_prev = time.time()
-	#error_prev = error
-
-	speed = gcs.speed + p_offset #+ d_offset
+	speed = gcs.speed + p_offset
 	# Update speed if changed
 	if speed != previous_speed:
 		if (time.time() - speed_time) > .2:
