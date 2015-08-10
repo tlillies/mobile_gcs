@@ -38,7 +38,7 @@ gain_behind = .0005
 ## Flight settings
 
 alt_base = 200
-alt_amp = 100
+alt_amp = 0
 alt_per = 240
 alt_fre = (2*math.pi) / alt_per
 
@@ -238,8 +238,8 @@ class Aircraft:
 
 		self.wp = None
 
-		self.wind_speed = None
-		self.wind_direction = None
+		self.wind_speed = 0
+		self.wind_direction = 0
 
 	def connect(self):
 		print("Connecting to autopilot...")
@@ -340,7 +340,7 @@ class Aircraft:
 				if msg.get_type() == "WIND":
 					self.wind_speed = msg.speed
 					self.wind_direction = msg.direction
-					print('speed: {0} direction: {1}'.format(self.wind_speed,self.wind_direction))
+					#print('speed: {0} direction: {1}'.format(self.wind_speed,self.wind_direction))
 				if msg.get_type() == "MISSION_REQUEST":
 					if self.wp:
 						self.mav.mav.send(self.wp.wp(msg.seq))
@@ -354,7 +354,7 @@ class Aircraft:
 						print('COMMAND_ACK command: {0} result: {1}'.format(msg.command,msg.result))
 				if msg.get_type() == "PARAM_VALUE":
 					if debug_speed:
-						print(str(msg))
+						print('Speed: {0}'.format(msg.param_value/100.0))
 
 
 def handle_input():
@@ -498,6 +498,8 @@ speed_time = time.time()
 
 time_prev = time.time()
 
+print_timer_last = time.time()
+
 speed = 15
 
 lat = gcs.lat
@@ -523,9 +525,43 @@ while sys.stdin:
 
 	## Calculate alt
 	ac.set_alt = alt_base + alt_amp * math.sin(alt_fre *time.time())
-	
 
-	## Send out data and update waypoint
+
+	## Speed controller
+	# Get distance between car and ac. x east/west, y north/south
+	ac_x,ac_y = LatLon2Dist(ac.set_lat-ac.lat,ac.set_lon-ac.lon, gcs.lat)
+	ac_y *= -1
+	ac_x *= -1
+	# Calculate the position of ac relative to car
+	alpha = math.radians(gcs.heading * (-1))
+	ac.rel_x = ac_x*math.cos(alpha) + ac_y*math.sin(alpha)
+	ac.rel_y = (-1)*ac_x*math.sin(alpha) + ac_y*math.cos(alpha)
+	# Calculate error
+	error = ac.rel_y - ac.set_y
+	# Calculate corrected speed
+	p_offset = error * error
+	if error < 0:
+		p_offset *= gain_front
+	else:
+		p_offset *= gain_behind *-1
+
+	speed = gcs.speed + p_offset
+	speed_temp = speed
+
+	# wind = ac.wind_speed * math.cos(math.radians(gcs.heading-ac.wind_direction))
+	# print(wind)
+
+	# speed += wind
+
+	speed_x = -1 * speed * math.sin(math.radians(gcs.heading))
+	speed_y = -1 * speed * math.cos(math.radians(gcs.heading))
+	wind_x = ac.wind_speed * math.sin(math.radians(ac.wind_direction))
+	wind_y = ac.wind_speed * math.cos(math.radians(ac.wind_direction))
+	ac_speed_x = speed_x - wind_x
+	ac_speed_y = speed_y - wind_y
+	speed = math.sqrt((ac_speed_x*ac_speed_x)+(ac_speed_y*ac_speed_y))
+
+	## Send out data and update wa
 	output_timer = time.time()
 	if (output_timer - output_timer_last) > .2:
 		output_timer_last = time.time()
@@ -558,7 +594,13 @@ while sys.stdin:
 		ac.set_point(lat,lon,ac.set_alt)
 		ac.set_rally(gcs)
 
+		# Send Speed
+		ac.set_speed(speed)
 
+	## Print out debug info
+	print_timer = time.time()
+	if (print_timer - print_timer_last) > 1:
+		print_timer_last = time.time()
 		# Print out data
 		if debug_position:
 			print("Aircraft-- Lat: {0:14}, Lon: {1:14}, Heading: {2:6}".format(ac.lat,ac.lon,ac.heading))
@@ -568,33 +610,10 @@ while sys.stdin:
 		if debug_dist:
 			print("dela_x:{0} dela_y:{1}".format(delta_x,delta_y))
 			print("x:{0} y:{1}".format(x,y))
-
-	## Speed controller
-	# Get distance between car and ac. x east/west, y north/south
-	ac_x,ac_y = LatLon2Dist(ac.set_lat-ac.lat,ac.set_lon-ac.lon, gcs.lat)
-	ac_y *= -1
-	ac_x *= -1
-	# Calculate the position of ac relative to car
-	alpha = math.radians(gcs.heading * (-1))
-	ac.rel_x = ac_x*math.cos(alpha) + ac_y*math.sin(alpha)
-	ac.rel_y = (-1)*ac_x*math.sin(alpha) + ac_y*math.cos(alpha)
-	# Calculate error
-	error = ac.rel_y - ac.set_y
-	# Calculate corrected speed
-	p_offset = error * error
-	if error < 0:
-		p_offset *= gain_front
-	else:
-		p_offset *= gain_behind *-1
-
-	speed = gcs.speed + p_offset
-	# Update speed if changed
-	if speed != previous_speed:
-		if (time.time() - speed_time) > .2:
-			if speed < 1:
-				speed = 1
-			ac.set_speed(speed)
-			previous_speed = speed
-			if debug:
-				print("CMDSpeed:{0} GCSSpeed:{1} Pf:{2} Error:{4}".format(speed,gcs.speed,p_offset,error))
-			speed_time = time.time()
+		if debug:
+			print("CMDSpeed:{0} GCSSpeed:{1} Pf:{2} Error:{4}".format(speed,gcs.speed,p_offset,error))
+		print("Wind: {0}, Goundspeed: {1}, Set Speed: {2}".format(ac.wind_speed,speed_temp,speed))
+		print("GCS Speed: {0}".format(gcs.speed))
+		print("Wind_x: {0}, Wind_y: {1}".format(wind_x,wind_y))
+		print("Speed_x: {0}, Speed_y: {1}".format(speed_x,speed_y))
+		print("AC_speed_x: {0}, AC_speed_y: {1}".format(ac_speed_x,ac_speed_y))
