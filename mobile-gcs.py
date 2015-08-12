@@ -552,7 +552,7 @@ while sys.stdin:
 	# print(wind)
 
 	# speed += wind
-
+	## Wind adjustment
 	speed_x = -1 * speed * math.sin(math.radians(gcs.heading))
 	speed_y = -1 * speed * math.cos(math.radians(gcs.heading))
 	wind_x = ac.wind_speed * math.sin(math.radians(ac.wind_direction))
@@ -612,8 +612,9 @@ while sys.stdin:
 			print("x:{0} y:{1}".format(x,y))
 		if debug:
 			print("CMDSpeed:{0} GCSSpeed:{1} Pf:{2} Error:{4}".format(speed,gcs.speed,p_offset,error))
-		print("Wind: {0}, Goundspeed: {1}, Set Speed: {2}".format(ac.wind_speed,speed_temp,speed))
-		print("GCS Speed: {0}".format(gcs.speed))
-		print("Wind_x: {0}, Wind_y: {1}".format(wind_x,wind_y))
-		print("Speed_x: {0}, Speed_y: {1}".format(speed_x,speed_y))
-		print("AC_speed_x: {0}, AC_speed_y: {1}".format(ac_speed_x,ac_speed_y))
+		if debug_speed:
+			print("Wind: {0}, Goundspeed: {1}, Set Speed: {2}".format(ac.wind_speed,speed_temp,speed))
+			print("GCS Speed: {0}".format(gcs.speed))
+			print("Wind_x: {0}, Wind_y: {1}".format(wind_x,wind_y))
+			print("Speed_x: {0}, Speed_y: {1}".format(speed_x,speed_y))
+			print("AC_speed_x: {0}, AC_speed_y: {1}".format(ac_speed_x,ac_speed_y))
