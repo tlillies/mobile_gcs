@@ -241,6 +241,11 @@ class Aircraft:
 		self.wind_speed = 0
 		self.wind_direction = 0
 
+		# Custom set wind
+		self.set_wind = False
+		self.set_wind_speed = 0
+		self.set_wind_direction = 0
+
 	def connect(self):
 		print("Connecting to autopilot...")
 		#self.mav = mavutil.mavlink_connection('/dev/ttyACM0', use_native=False,baud=921600, dialect="ardupilotmega")
@@ -367,6 +372,7 @@ def handle_input():
 	global debug_dist
 	global debug_position
 	global debug_alt
+	global debug_wind
 
 	try:
 		if sys.stdin in readable:
@@ -416,6 +422,13 @@ def handle_input():
 						else:
 							print("DEBUG ALT SET OFF")
 							debug_alt = False
+					if match.group(2) == 'wind':
+						if match.group(3) == 'on':
+							print("DEBUG WIND SET ON")
+							debug_wind = True
+						else:
+							print("DEBUG WIND SET OFF")
+							debug_wind = False
 
 				elif match.group(1) == 'set':
 					if match.group(2) == 'alt':
@@ -444,6 +457,27 @@ def handle_input():
 							y = -500
 						ac.set_y = y
 						print('SET Y TO {0}'.format(match.group(3)))
+					elif match.group(2) == 'wind':
+						if match.group(3) == "off":
+							ac.set_wind = False
+							print('SET WIND TO OFF')
+						else:
+							wind_speed = int(match.group(3))
+							ac.set_wind_speed = wind_speed
+							ac.set_wind = True
+							print('SET WIND SPEED TO {0}'.format(ac.set_wind_speed))
+							print('SET WIND DIRECTION TO {0}'.format(ac.set_wind_direction))
+
+					elif match.group(2) == 'wind_dir':
+						if match.group(3) == "off":
+							ac.set_wind = False
+							print('SET WIND TO OFF')
+						else:
+							wind_dir = int(match.group(3))
+							ac.set_wind_direction = wind_dir
+							ac.set_wind = True
+							print('SET WIND SPEED TO {0}'.format(ac.set_wind_speed))
+							print('SET WIND DIRECTION TO {0}'.format(ac.set_wind_direction))
 
 					else:
 						print("NOT A KNOWN COMMAND: {0}".format(match.group(2)))
@@ -477,6 +511,7 @@ debug_dist = False
 debug_mission = False
 debug_position = False
 debug_alt = False
+debug_wind = False
 
 # Wait for GPS
 while (not gcs.lat):
@@ -548,20 +583,22 @@ while sys.stdin:
 	speed = gcs.speed + p_offset
 	speed_temp = speed
 
-	# wind = ac.wind_speed * math.cos(math.radians(gcs.heading-ac.wind_direction))
-	# print(wind)
-
-	# speed += wind
 	## Wind adjustment
+	if ac.set_wind: # Custom set wind vector vs autopilot wind
+		wind_speed = ac.set_wind_speed
+		wind_direction = ac.set_wind_direction
+	else:
+		wind_speed = ac.wind_speed
+		wind_direction = ac.set_wind_direction
 	speed_x = -1 * speed * math.sin(math.radians(gcs.heading))
 	speed_y = -1 * speed * math.cos(math.radians(gcs.heading))
-	wind_x = ac.wind_speed * math.sin(math.radians(ac.wind_direction))
-	wind_y = ac.wind_speed * math.cos(math.radians(ac.wind_direction))
+	wind_x = wind_speed * math.sin(math.radians(wind_direction))
+	wind_y = wind_speed * math.cos(math.radians(wind_direction))
 	ac_speed_x = speed_x - wind_x
 	ac_speed_y = speed_y - wind_y
 	speed = math.sqrt((ac_speed_x*ac_speed_x)+(ac_speed_y*ac_speed_y))
 
-	## Send out data and update wa
+	## Send out data and update wp
 	output_timer = time.time()
 	if (output_timer - output_timer_last) > .2:
 		output_timer_last = time.time()
@@ -586,10 +623,6 @@ while sys.stdin:
 		lat, lon = Dist2LatLon(ac.set_lat,ac.set_lon,y,x)
 		gcs.set_point() #Set the current point to gcs update position
 
-		# tag gcs location for next distance calculation
-		gcs.lat_wp = gcs.lat
-		gcs.lon_wp = gcs.lon
-
 		# Send new waypoint
 		ac.set_point(lat,lon,ac.set_alt)
 		ac.set_rally(gcs)
@@ -613,8 +646,16 @@ while sys.stdin:
 		if debug:
 			print("CMDSpeed:{0} GCSSpeed:{1} Pf:{2} Error:{4}".format(speed,gcs.speed,p_offset,error))
 		if debug_speed:
-			print("Wind: {0}, Goundspeed: {1}, Set Speed: {2}".format(ac.wind_speed,speed_temp,speed))
+			print("Autopilot Wind: {0}, Goundspeed: {1}, Set Speed: {2}".format(ac.wind_speed,speed_temp,speed))
 			print("GCS Speed: {0}".format(gcs.speed))
-			print("Wind_x: {0}, Wind_y: {1}".format(wind_x,wind_y))
-			print("Speed_x: {0}, Speed_y: {1}".format(speed_x,speed_y))
+			print("GCS Speed_x: {0}, GCS Speed_y: {1}".format(speed_x,speed_y))
 			print("AC_speed_x: {0}, AC_speed_y: {1}".format(ac_speed_x,ac_speed_y))
+		if debug_wind:
+			print("Wind Speed: {0}, Wind Direction: {1}".format(wind_speed,wind_direction))
+			print("Wind_x: {0}, Wind_y: {1}".format(wind_x,wind_y))
+			print("Set Wind:".format(ac.set_wind))
+			print("Autopilot Wind: {0}, Autopilot Direction: {1}".format(ac.wind_speed, ac.wind_direction))
+			print("Set Wind Speed: {0}, Set Wind Direction: {1}".format(ac.set_wind_speed, ac.set_wind_direction))
+			print("Send Speed: {0}".format(speed))
+			print("")
+			

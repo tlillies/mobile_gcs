@@ -5,6 +5,7 @@
     <Style id="sn_van">
       <IconStyle>
         <scale>1.2</scale>
+        <heading>-90.0</heading>
         <Icon>
           <href>http://maps.google.com/mapfiles/kml/shapes/truck.png</href>
         </Icon>
@@ -16,7 +17,7 @@
       <styleUrl>sn_van</styleUrl>
       <Point>
         <altitudeMode>relativeToGround</altitudeMode>
-        <coordinates>149.181303,-35.335864,0.000000</coordinates>
+        <coordinates>149.131382,-35.432462,0.000000</coordinates>
       </Point>
     </Placemark>
   </Document>
