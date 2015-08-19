@@ -1,6 +1,5 @@
 #mobile-gcs.py
 #Research and Engineering Center for Unmanned Vehicles
-#Based off some code in antenna-tracker.py
 
 import json
 import math
@@ -17,7 +16,8 @@ import select
 ## Connection settings
 
 # KML
-UDP_IP = "127.0.0.1"
+#UDP_IP = "127.0.0.1"
+UDP_IP = "192.168.8.223"
 UDP_PORT = 5005
 sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
 
@@ -26,8 +26,8 @@ ac_host = "udpin:0.0.0.0:14550"
 #ac_host = '/dev/ttyUSB0'
 
 # GPS dongle port
-gps_port = '/tmp/ttyV0'
-
+#gps_port = '/tmp/ttyV0'
+gps_port = '/dev/ttyUSB0' 
 
 ## Gains
 
@@ -246,6 +246,9 @@ class Aircraft:
 		self.set_wind_speed = 0
 		self.set_wind_direction = 0
 
+		# Speed AC has been set to
+		self.got_speed = 0
+
 	def connect(self):
 		print("Connecting to autopilot...")
 		#self.mav = mavutil.mavlink_connection('/dev/ttyACM0', use_native=False,baud=921600, dialect="ardupilotmega")
@@ -317,7 +320,6 @@ class Aircraft:
 	def update(self):
 		global readable
 		global debug_mission
-		global debug_speed
 
 
 		self.heartbeat_timeout = time.time() - self.heartbeat_time
@@ -330,13 +332,10 @@ class Aircraft:
 		if self.mav.fd in readable:
 			msg = self.mav.recv_match(blocking=False)
 			if msg:
-				#print(msg)
 				if msg.get_type() == "HEARTBEAT":
 					self.heartbeat_time = time.time()
 					self.heartbeat = True
-					#print("heartbeat")
 				if msg.get_type() == "GLOBAL_POSITION_INT":
-					#print(msg.lat,msg.lon,msg.relative_alt)
 					self.lat = (msg.lat) / (10000000.0)
 					self.lon = (msg.lon) / (10000000.0)
 					self.alt = msg.alt
@@ -345,7 +344,6 @@ class Aircraft:
 				if msg.get_type() == "WIND":
 					self.wind_speed = msg.speed
 					self.wind_direction = msg.direction
-					#print('speed: {0} direction: {1}'.format(self.wind_speed,self.wind_direction))
 				if msg.get_type() == "MISSION_REQUEST":
 					if self.wp:
 						self.mav.mav.send(self.wp.wp(msg.seq))
@@ -358,11 +356,10 @@ class Aircraft:
 					if debug_mission:
 						print('COMMAND_ACK command: {0} result: {1}'.format(msg.command,msg.result))
 				if msg.get_type() == "PARAM_VALUE":
-					if debug_speed:
-						print('Speed: {0}'.format(msg.param_value/100.0))
+						ac.got_speed = msg.param_value/100.0
 
 
-def handle_input():
+def handle_input(self):
 	global ac
 	global gcs
 	global readable
@@ -583,6 +580,7 @@ while sys.stdin:
 	speed = gcs.speed + p_offset
 	speed_temp = speed
 
+
 	## Wind adjustment
 	if ac.set_wind: # Custom set wind vector vs autopilot wind
 		wind_speed = ac.set_wind_speed
@@ -597,6 +595,7 @@ while sys.stdin:
 	ac_speed_x = speed_x - wind_x
 	ac_speed_y = speed_y - wind_y
 	speed = math.sqrt((ac_speed_x*ac_speed_x)+(ac_speed_y*ac_speed_y))
+
 
 	## Send out data and update wp
 	output_timer = time.time()
@@ -646,16 +645,16 @@ while sys.stdin:
 		if debug:
 			print("CMDSpeed:{0} GCSSpeed:{1} Pf:{2} Error:{4}".format(speed,gcs.speed,p_offset,error))
 		if debug_speed:
-			print("Autopilot Wind: {0}, Goundspeed: {1}, Set Speed: {2}".format(ac.wind_speed,speed_temp,speed))
-			print("GCS Speed: {0}".format(gcs.speed))
+			print("Current Set Speed: {0}".format(ac.got_speed))
+			print("Controller: {0}, Wind Adjust: {1}".format(speed_temp,speed))
+			print("Current GCS Speed: {0}".format(gcs.speed))
 			print("GCS Speed_x: {0}, GCS Speed_y: {1}".format(speed_x,speed_y))
 			print("AC_speed_x: {0}, AC_speed_y: {1}".format(ac_speed_x,ac_speed_y))
 		if debug_wind:
 			print("Wind Speed: {0}, Wind Direction: {1}".format(wind_speed,wind_direction))
 			print("Wind_x: {0}, Wind_y: {1}".format(wind_x,wind_y))
-			print("Set Wind:".format(ac.set_wind))
+			print("Set Wind: {0}".format(ac.set_wind))
 			print("Autopilot Wind: {0}, Autopilot Direction: {1}".format(ac.wind_speed, ac.wind_direction))
 			print("Set Wind Speed: {0}, Set Wind Direction: {1}".format(ac.set_wind_speed, ac.set_wind_direction))
 			print("Send Speed: {0}".format(speed))
-			print("")
 			
