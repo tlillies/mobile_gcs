@@ -8,10 +8,15 @@ import socket
 import re
 import select
 import time
+import sys
+
 from pymavlink import mavutil
 from pymavlink import mavwp
-import sys
-import select
+
+#import Aircraft
+#import GCS
+
+
 
 ## Connection settings
 
@@ -29,22 +34,31 @@ ac_host = "udpin:0.0.0.0:14550"
 #gps_port = '/tmp/ttyV0'
 gps_port = '/dev/ttyUSB0' 
 
+
 ## Gains
 
-gain_front = .001
-gain_behind = .0005
+GAIN_FRONT = .001  # When the ac is in front of the car
+GAIN_BACK = .0005  # When the ac is behind car
 
 
 ## Flight settings
 
-alt_base = 200
-alt_amp = 0
-alt_per = 240
-alt_fre = (2*math.pi) / alt_per
+ALT_BASE = 200
+ALT_AMP = 0
+ALT_PER = 240
+ALT_FRE = (2*math.pi) / ALT_PER
 
+WP_DISATNCE = 200
 
-def LatLon2Dist(lat_diff, lon_diff, lat_ref):
-    #LatLon2Dist converts differences in lat/lon position to cartesian
+AIRSPEED_MAX = 14
+AIRSPEED_MIN = 30
+
+UPDATE_RATE = .2
+
+PRINT_RATE = 1
+
+def latlon_to_dist(lat_diff, lon_diff, lat_ref):
+    #latlon_to_dist converts differences in lat/lon position to cartesian
     #Inputs:
     #       lat_diff = latitude difference [deg]
     #       lon_diff = longitude difference [deg]
@@ -65,7 +79,7 @@ def LatLon2Dist(lat_diff, lon_diff, lat_ref):
     x = lon_diff*(math.pi*re_c)/180
     return x, y
 
-def Dist2LatLon(lat,lon,dn,de):
+def dist_to_latlon(lat,lon,dn,de):
 	# William's aviation
 	# dn -- distance north
 	# de -- distance east
@@ -79,16 +93,7 @@ def Dist2LatLon(lat,lon,dn,de):
 
 	return lat0, lon0
 
-def AzimuthNearest(az, az_prev, cal):
-    az_nominal = cal['az_min']+(az/math.pi/2)*(cal['az_max']-cal['az_min'])
-    az_candidates = [ az_nominal+x*(cal['az_max']-cal['az_min']) for x in range(-3,4)]
-    az_candidates = [x for x in az_candidates if (x>2600 and x<9400)]
-    az_cmd = az_candidates[0]
-    for i in az_candidates:
-        if abs(i-az_prev) < abs(az_cmd-az_prev): az_cmd = i
-    return az_cmd
-
-class GCS:
+class GroundControlStation:
 	""" Class for GCS data """
 	def __init__(self, port):
 		# lat lon alt of actual car
@@ -100,10 +105,6 @@ class GCS:
 		self.lon_wp = None
 		self.alt_wp = None
 
-		self.lastset_lat = None
-		self.lastset_lon = None
-		self.lastset_alt = None
-
 		self.port= port
 		self.gps = None
 
@@ -111,13 +112,16 @@ class GCS:
 		self.speed = None
 		self.heading = None
 
-		self.update_distance = 25
-		self.wp_distance = 200
+		self.wp_distance = 0
 
 		self.error = True
 		self.active = False
 		self.active_timeout = 0
 		self.active_time = time.time()
+
+	def set_wp_dist(self, wp_dist):
+		self.wp_distance = wp_dist
+		return
 
 	def lat_diff(self):
 		# distance between current lat and lat where last wp was set
@@ -135,13 +139,7 @@ class GCS:
 		except:
 		    print("GPS CONECT FAILED")
 
-	def set_point(self):
-		self.lastset_lat = self.lat
-		self.lastset_lon = self.lon
-		self.lastset_alt = self.alt
-
-	def update(self):
-		global readable
+	def update(self,readable):
 		#Check for timeout
 		self.active_timeout = time.time() - self.active_time
 		if self.active_timeout > 3:
@@ -317,8 +315,7 @@ class Aircraft:
 		self.mav.mav.send(msg)
 		
 
-	def update(self):
-		global readable
+	def update(self,readable):
 		global debug_mission
 
 
@@ -359,18 +356,7 @@ class Aircraft:
 						ac.got_speed = msg.param_value/100.0
 
 
-def handle_input(self):
-	global ac
-	global gcs
-	global readable
-	global debug
-	global debug_mission
-	global debug_speed
-	global debug_dist
-	global debug_position
-	global debug_alt
-	global debug_wind
-
+def handle_input(self,debug,ac,gcs,readable):
 	try:
 		if sys.stdin in readable:
 			line = sys.stdin.readline()
@@ -482,6 +468,7 @@ def handle_input(self):
 					print("NOT A KNOWN COMMAND: {0}".format(match.group(1)))
 			else:
 				print('COMMAND NOT FORMATED PROPERLY')
+		#return debug
 
 	except:
 	 	print("Couldn't read from stdin")
@@ -494,43 +481,33 @@ ac.connect()
 
 gcs = GCS(gps_port)
 gcs.connect()
+gcs.set_wp_dist(WP_DISATNCE)
 
-previous_speed = 0
-
-error_prev = 0
-
-output_timer = time.time()
-output_timer_last = time.time()
-
-debug = False
-debug_speed = False
-debug_dist = False
-debug_mission = False
-debug_position = False
-debug_alt = False
-debug_wind = False
+debug = []
+debug['debug_gen'] = False
+debug['debug_speed'] = False
+debug['debug_dist'] = False
+debug['debug_mission'] = False
+debug['debug_position'] = False
+debug['debug_alt'] = False
+debug['debug_wind'] = False
 
 # Wait for GPS
 while (not gcs.lat):
 	readable, writable, exceptional = select.select([x for x in [ac.mav.fd, gcs.gps, sys.stdin] if x is not None], [], [])
 	gcs.update()
 
-ac.set_point(gcs.lat,gcs.lon,100)
-gcs.set_point()
-alt = 100
+ac.set_point(gcs.lat,gcs.lon,ALT_BASE)
 
 # Wait for AC GPS
 while (not ac.lat):
 	readable, writable, exceptional = select.select([x for x in [ac.mav.fd, gcs.gps, sys.stdin] if x is not None], [], [])
 	ac.update()
 
-
-
-speed_time = time.time()
-
-time_prev = time.time()
-
+print_timer = time.time()
 print_timer_last = time.time()
+output_timer = time.time()
+output_timer_last = time.time()
 
 speed = 15
 
@@ -545,23 +522,23 @@ while sys.stdin:
 	## Update devices
 	ac.update()
 	gcs.update()
-	handle_input()
+	handle_input(debug,ac,gcs)
 
 
 	## Calculate lat lon of set point
 	alpha = math.radians(gcs.heading * -1)
 	dist_x = ac.set_x*math.cos(alpha) - ac.set_y*math.sin(alpha)
 	dist_y = ac.set_x*math.sin(alpha) + ac.set_y*math.cos(alpha)
-	ac.set_lat, ac.set_lon = Dist2LatLon(gcs.lat,gcs.lon,dist_y,dist_x)
+	ac.set_lat, ac.set_lon = dist_to_latlon(gcs.lat,gcs.lon,dist_y,dist_x)
 
 
-	## Calculate alt
-	ac.set_alt = alt_base + alt_amp * math.sin(alt_fre *time.time())
+	## Calculate alt to set
+	ac.set_alt = ALT_BASE + ALT_AMP * math.sin(ALT_FRE *time.time())
 
 
 	## Speed controller
 	# Get distance between car and ac. x east/west, y north/south
-	ac_x,ac_y = LatLon2Dist(ac.set_lat-ac.lat,ac.set_lon-ac.lon, gcs.lat)
+	ac_x,ac_y = latlon_to_dist(ac.set_lat-ac.lat,ac.set_lon-ac.lon, gcs.lat)
 	ac_y *= -1
 	ac_x *= -1
 	# Calculate the position of ac relative to car
@@ -573,9 +550,9 @@ while sys.stdin:
 	# Calculate corrected speed
 	p_offset = error * error
 	if error < 0:
-		p_offset *= gain_front
+		p_offset *= GAIN_FRONT
 	else:
-		p_offset *= gain_behind *-1
+		p_offset *= GAIN_BACK *-1
 
 	speed = gcs.speed + p_offset
 	speed_temp = speed
@@ -599,10 +576,52 @@ while sys.stdin:
 
 	## Send out data and update wp
 	output_timer = time.time()
-	if (output_timer - output_timer_last) > .2:
+	if (output_timer - output_timer_last) > UPDATE_RATE:
 		output_timer_last = time.time()
 		
-		# Sound out JSON data for kml updater
+		# Calculate next waypoint
+		y = gcs.wp_distance * math.cos(math.radians(gcs.heading))
+		x = gcs.wp_distance * math.sin(math.radians(gcs.heading))
+
+		# Send new waypoint
+		lat, lon = dist_to_latlon(ac.set_lat,ac.set_lon,y,x)
+		ac.set_point(lat,lon,ac.set_alt)
+		ac.set_rally(gcs)
+
+		# Send Speed
+		ac.set_speed(speed)
+
+
+	## Print out debug info and send kml data
+	print_timer = time.time()
+	if (print_timer - print_timer_last) > PRINT_RATE:
+		print_timer_last = time.time()
+		# Print out data
+		if debug['debug_position']:
+			print("Aircraft-- Lat: {0:14}, Lon: {1:14}, Heading: {2:6}".format(ac.lat,ac.lon,ac.heading))
+			print("Ground  -- Lat: {0:14}, Lon: {1:14}, Heading: {2:6}".format(gcs.lat,gcs.lon,gcs.heading))
+		if debug['debug_alt']:
+			print("Set Alt: {0}, Base Alt: {1}, Alt Amp: {2}, Alt Freq: {3}".format(ac.set_alt,ALT_BASE,ALT_AMP,ALT_FRE))
+		if debug['debug_dist']:
+			print("dela_x:{0} dela_y:{1}".format(delta_x,delta_y))
+			print("x:{0} y:{1}".format(x,y))
+		if debug['debug_gen']:
+			print("CMDSpeed:{0} GCSSpeed:{1} Pf:{2} Error:{4}".format(speed,gcs.speed,p_offset,error))
+		if debug['debug_speed']:
+			print("Current Set Speed: {0}".format(ac.got_speed))
+			print("Controller: {0}, Wind Adjust: {1}".format(speed_temp,speed))
+			print("Current GCS Speed: {0}".format(gcs.speed))
+			print("GCS Speed_x: {0}, GCS Speed_y: {1}".format(speed_x,speed_y))
+			print("AC_speed_x: {0}, AC_speed_y: {1}".format(ac_speed_x,ac_speed_y))
+		if debug['debug_wind']:
+			print("Wind Speed: {0}, Wind Direction: {1}".format(wind_speed,wind_direction))
+			print("Wind_x: {0}, Wind_y: {1}".format(wind_x,wind_y))
+			print("Set Wind: {0}".format(ac.set_wind))
+			print("Autopilot Wind: {0}, Autopilot Direction: {1}".format(ac.wind_speed, ac.wind_direction))
+			print("Set Wind Speed: {0}, Set Wind Direction: {1}".format(ac.set_wind_speed, ac.set_wind_direction))
+			print("Send Speed: {0}".format(speed))
+
+		# Send out JSON data for kml updater
 		ac_msg = '{"type":"ac","lat":' + str(ac.lat) + ',"lon":' + str(ac.lon) + ',"alt":' + str(ac.relative_alt) + ',"heading":' + str(ac.heading) + '}'
 		wp_msg = '{"type":"wp","lat":' + str(ac.wp_lat) + ',"lon":' + str(ac.wp_lon) + ',"alt":' + str(ac.wp_alt) + ',"heading":' + str(0) + '}'
 		set_msg = '{"type":"set","lat":' + str(ac.set_lat) + ',"lon":' + str(ac.set_lon) + ',"alt":' + str(ac.set_alt) + ',"heading":' + str(0) + '}'
@@ -612,49 +631,4 @@ while sys.stdin:
 		sock.sendto(wp_msg, (UDP_IP, UDP_PORT))
 		sock.sendto(set_msg, (UDP_IP, UDP_PORT))
 		sock.sendto(gcs_msg, (UDP_IP, UDP_PORT))
-
-
-		# Calculate next waypoint
-		y = gcs.wp_distance * math.cos(math.radians(gcs.heading))
-		x = gcs.wp_distance * math.sin(math.radians(gcs.heading))
-
-		# Calculate lat/lon and set guided wp
-		lat, lon = Dist2LatLon(ac.set_lat,ac.set_lon,y,x)
-		gcs.set_point() #Set the current point to gcs update position
-
-		# Send new waypoint
-		ac.set_point(lat,lon,ac.set_alt)
-		ac.set_rally(gcs)
-
-		# Send Speed
-		ac.set_speed(speed)
-
-	## Print out debug info
-	print_timer = time.time()
-	if (print_timer - print_timer_last) > 1:
-		print_timer_last = time.time()
-		# Print out data
-		if debug_position:
-			print("Aircraft-- Lat: {0:14}, Lon: {1:14}, Heading: {2:6}".format(ac.lat,ac.lon,ac.heading))
-			print("Ground  -- Lat: {0:14}, Lon: {1:14}, Heading: {2:6}".format(gcs.lat,gcs.lon,gcs.heading))
-		if debug_alt:
-			print("Set Alt: {0}, Base Alt: {1}, Alt Amp: {2}, Alt Freq: {3}".format(ac.set_alt,alt_base,alt_amp,alt_fre))
-		if debug_dist:
-			print("dela_x:{0} dela_y:{1}".format(delta_x,delta_y))
-			print("x:{0} y:{1}".format(x,y))
-		if debug:
-			print("CMDSpeed:{0} GCSSpeed:{1} Pf:{2} Error:{4}".format(speed,gcs.speed,p_offset,error))
-		if debug_speed:
-			print("Current Set Speed: {0}".format(ac.got_speed))
-			print("Controller: {0}, Wind Adjust: {1}".format(speed_temp,speed))
-			print("Current GCS Speed: {0}".format(gcs.speed))
-			print("GCS Speed_x: {0}, GCS Speed_y: {1}".format(speed_x,speed_y))
-			print("AC_speed_x: {0}, AC_speed_y: {1}".format(ac_speed_x,ac_speed_y))
-		if debug_wind:
-			print("Wind Speed: {0}, Wind Direction: {1}".format(wind_speed,wind_direction))
-			print("Wind_x: {0}, Wind_y: {1}".format(wind_x,wind_y))
-			print("Set Wind: {0}".format(ac.set_wind))
-			print("Autopilot Wind: {0}, Autopilot Direction: {1}".format(ac.wind_speed, ac.wind_direction))
-			print("Set Wind Speed: {0}, Set Wind Direction: {1}".format(ac.set_wind_speed, ac.set_wind_direction))
-			print("Send Speed: {0}".format(speed))
 			
