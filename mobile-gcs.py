@@ -1,516 +1,86 @@
 #mobile-gcs.py
 #Research and Engineering Center for Unmanned Vehicles
 
-import json
-import math
-import serial
-import socket
-import re
 import select
 import time
+import math
 import sys
 
-from pymavlink import mavutil
-from pymavlink import mavwp
-
-#import Aircraft
-#import GCS
+import Aircraft
+import GCS
+import helpers
 
 
-
-## Connection settings
+## Connection settings ##
 
 # KML
-#UDP_IP = "127.0.0.1"
-UDP_IP = "192.168.8.223"
+UDP_IP = "127.0.0.1"
+#UDP_IP = "192.168.8.223"
 UDP_PORT = 5005
-sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
 
 # Autopilot connection
 ac_host = "udpin:0.0.0.0:14550"
 #ac_host = '/dev/ttyUSB0'
 
 # GPS dongle port
-#gps_port = '/tmp/ttyV0'
-gps_port = '/dev/ttyUSB0' 
+gps_port = '/tmp/ttyV0'
+#gps_port = '/dev/ttyUSB0' 
 
 
-## Gains
+## Gains ##
 
-GAIN_FRONT = .001  # When the ac is in front of the car
-GAIN_BACK = .0005  # When the ac is behind car
+P_GAIN_FRONT = .001  # When the ac is in front of the car
+P_GAIN_BACK = .0005  # When the ac is behind car
 
-
-## Flight settings
+## Flight settings ##
 
 ALT_BASE = 200
 ALT_AMP = 0
 ALT_PER = 240
 ALT_FRE = (2*math.pi) / ALT_PER
 
-WP_DISATNCE = 200
+WP_DISATNCE = 200 # Guided waypoint set distance in front of car
 
-AIRSPEED_MAX = 14
-AIRSPEED_MIN = 30
+AIRSPEED_MAX = 30
+AIRSPEED_MIN = 14
 
-UPDATE_RATE = .2
+UPDATE_RATE = .2 # rate to send waypoints/speed in seconds
 
-PRINT_RATE = 1
-
-def latlon_to_dist(lat_diff, lon_diff, lat_ref):
-    #latlon_to_dist converts differences in lat/lon position to cartesian
-    #Inputs:
-    #       lat_diff = latitude difference [deg]
-    #       lon_diff = longitude difference [deg]
-    #       lat_ref  = latitude reference [deg]
-    #Outputs:
-    #       x = east/west difference
-    #       y = north/south difference
-    #Assumptions:
-    #       differences are small enough such that east/west distances
-    #       are constant for variable lattitude
-    #radius of the Earth [m]
-    re = 6378100
-    #north/south difference (just arc length)
-    y = lat_diff*(math.pi*re)/180
-    #correct for longitude lines getting closer together near poles
-    re_c = re*math.cos(abs(lat_ref*math.pi/180))
-    #east/west difference
-    x = lon_diff*(math.pi*re_c)/180
-    return x, y
-
-def dist_to_latlon(lat,lon,dn,de):
-	# William's aviation
-	# dn -- distance north
-	# de -- distance east
-	re = 6378137
-
-	dLat = dn/re
-	dLon = de/(re*math.cos(math.pi*lat/180))
-
-	lat0 = lat + dLat * 180/math.pi
-	lon0 = lon + dLon * 180/math.pi
-
-	return lat0, lon0
-
-class GroundControlStation:
-	""" Class for GCS data """
-	def __init__(self, port):
-		# lat lon alt of actual car
-		self.lat = None
-		self.lon = None
-		self.alt = None
-		# position where last waypoint was set
-		self.lat_wp = None
-		self.lon_wp = None
-		self.alt_wp = None
-
-		self.port= port
-		self.gps = None
-
-		self.knots = None
-		self.speed = None
-		self.heading = None
-
-		self.wp_distance = 0
-
-		self.error = True
-		self.active = False
-		self.active_timeout = 0
-		self.active_time = time.time()
-
-	def set_wp_dist(self, wp_dist):
-		self.wp_distance = wp_dist
-		return
-
-	def lat_diff(self):
-		# distance between current lat and lat where last wp was set
-		return self.lat - self.lat_wp
-
-	def lon_diff(self):
-		# distance between current lon and lon where last wp was set
-		return self.lon - self.lon_wp
-
-	def connect(self):
-		try:
-			print("Connecting to GPS...")
-			self.gps = serial.Serial(port=self.port, baudrate=4800, timeout=.1)
-			print("Got GPS!")
-		except:
-		    print("GPS CONECT FAILED")
-
-	def update(self,readable):
-		#Check for timeout
-		self.active_timeout = time.time() - self.active_time
-		if self.active_timeout > 3:
-			print("LOST GCS GPS!!!")
-			self.active = False
-			self.active_time = time.time()
-
-		# Get and handle message
-		if self.gps in readable:
-			raw = self.gps.readline()
-			self.active_time = time.time()
-			self.active = True
-			data = raw.split(',')
-			if data[0] == "$GPRMC":
-				if data[2] == 'A': # check for valid GPS fix
-
-					lat = float(data[3])/100
-					lat = divmod(lat,1)[0]+divmod(lat,1)[1]*100/60
-					if data[4] == 'S':
-						lat *= (-1)
-
-					lon = float(data[5])/100
-					lon = divmod(lon,1)[0]+divmod(lon,1)[1]*100/60
-					if data[6] == 'W':
-						lon *= (-1)
-
-					speed = float(data[7]) * (0.514444)
-
-					self.lat = lat
-					self.lon = lon
-					self.heading = float(data[8])
-					self.speed = speed
-					self.error = False
-
-				if data[2] == 'V':
-					self.error = True
-
-
-class Aircraft:
-	""" Class for Aircraft data """
-	def __init__(self, host):
-
-		self.heartbeat = False
-		self.heartbeat_timeout = 0
-		self.heartbeat_time = time.time()
-
-		self.mav = None
-		self.host = host
-
-		self.speed = None
-		self.heading = None
-
-		# actual location of ac in lat/lon/alt
-		self.lat = None
-		self.lon = None
-		self.alt = None
-		self.relative_alt = None
-
-		# set point of the wp in lat/lon/alt
-		self.wp_lat = None
-		self.wp_lon = None
-		self.wp_alt = None
-
-		#set point of the intended position in lat/lon/alt
-		self.set_lat = None
-		self.set_lon = None
-		self.set_alt = 100
-
-
-		# Location of ac relative to car in meters
-		self.rel_x = None
-		self.rel_y = None
-		self.rel_z = None
-
-		# Set point of ac position relative to car in meters
-		self.set_x = 0
-		self.set_y = 0
-		self.set_z = 100
-
-		# max and min alt
-		self.min_alt = 75
-		self.max_alt = 250
-
-		# max x and y distance in meters from car
-		self.max_x = 200
-		self.max_y = 200
-
-		# Min and max airspeed
-		self.as_min = 14
-		self.as_max = 25
-
-		self.rally = None
-		self.rallypoint = None
-
-		self.wp = None
-
-		self.wind_speed = 0
-		self.wind_direction = 0
-
-		# Custom set wind
-		self.set_wind = False
-		self.set_wind_speed = 0
-		self.set_wind_direction = 0
-
-		# Speed AC has been set to
-		self.got_speed = 0
-
-	def connect(self):
-		print("Connecting to autopilot...")
-		#self.mav = mavutil.mavlink_connection('/dev/ttyACM0', use_native=False,baud=921600, dialect="ardupilotmega")
-		self.mav = mavutil.mavlink_connection(self.host, use_native=False)
-		print("Connected to autopilot!")
-
-		print("Waiting for heartbeat...")
-		self.mav.wait_heartbeat(blocking=True)
-		print("Got Heartbeat!")
-		print("Waiting for plane GPS")
-		msg = self.mav.recv_match(type=['GLOBAL_POSITION_INT'],blocking=True)
-		print("Got plane GPS!")
-
-		self.lat = (msg.lat) / (10000000.0)
-		self.lon = (msg.lon) / (10000000.0)
-		self.alt = msg.alt
-		self.relative_alt = (msg.relative_alt) / (1000.0)
-		self.heading = (msg.hdg) / (100.0)
-
-		self.rally = mavwp.MAVRallyLoader(self.mav.target_system,self.mav.target_component)
-		self.rally.create_and_append_rally_point(self.lat * 1e7,self.lon * 1e7 ,100,50,0,0)
-		self.rallypoint = self.rally.rally_point(0)
-		self.rallypoint.target_system = self.mav.target_system
-		self.rallypoint.target_component = self.mav.target_component
-		self.mav.mav.send(self.rallypoint)
-
-	def set_point(self, lat, lon, alt):
-		# Set new guided wp for ac
-		self.wp_lat = lat
-		self.wp_lon = lon
-		self.wp_alt = alt
-
-		seq = 0
-		frame = mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT
-		radius = 0
-		current = 2  # flag for guided mode
-
-		msg = mavutil.mavlink.MAVLink_mission_item_message(self.mav.target_system,
-            self.mav.target_component,
-            seq,
-            frame,
-            mavutil.mavlink.MAV_CMD_NAV_WAYPOINT,
-            current, 0, 0, radius, 1.0, 0, lat, lon, alt)
-
-		self.mav.mav.send(msg)
-
-	def set_rally(self,gcs):
-		self.rally.move(1,gcs.lat,gcs.lon)
-		self.rallypoint = self.rally.rally_point(0)
-		self.rallypoint.target_system = self.mav.target_system
-		self.rallypoint.target_component = self.mav.target_component
-		self.mav.mav.send(self.rallypoint)
-
-	def set_speed(self, speed):
-		if speed < 14:
-			speed = 14
-		if speed > 30:
-			speed = 30
-
-		msg = mavutil.mavlink.MAVLink_param_set_message(self.mav.target_system,
-            self.mav.target_component,
-            'TRIM_ARSPD_CM',
-            speed*100,
-            1)
-
-		self.mav.mav.send(msg)
-		
-
-	def update(self,readable):
-		global debug_mission
-
-
-		self.heartbeat_timeout = time.time() - self.heartbeat_time
-		if self.heartbeat_timeout > 3:
-			print("LOST HEARTBEAT!!!")
-			self.heartbeat = False
-			self.heartbeat_time = time.time()
-
-		# Handle message
-		if self.mav.fd in readable:
-			msg = self.mav.recv_match(blocking=False)
-			if msg:
-				if msg.get_type() == "HEARTBEAT":
-					self.heartbeat_time = time.time()
-					self.heartbeat = True
-				if msg.get_type() == "GLOBAL_POSITION_INT":
-					self.lat = (msg.lat) / (10000000.0)
-					self.lon = (msg.lon) / (10000000.0)
-					self.alt = msg.alt
-					self.relative_alt = (msg.relative_alt) / (1000.0)
-					self.heading = (msg.hdg) / (100.0)
-				if msg.get_type() == "WIND":
-					self.wind_speed = msg.speed
-					self.wind_direction = msg.direction
-				if msg.get_type() == "MISSION_REQUEST":
-					if self.wp:
-						self.mav.mav.send(self.wp.wp(msg.seq))
-						if debug_mission:
-							print('Sending waypoint {0}'.format(msg.seq))
-				if msg.get_type() == "MISSION_ACK":
-					if debug_mission:
-						print('MISSION_ACK %i' % msg.type)
-				if msg.get_type() == "COMMAND_ACK":
-					if debug_mission:
-						print('COMMAND_ACK command: {0} result: {1}'.format(msg.command,msg.result))
-				if msg.get_type() == "PARAM_VALUE":
-						ac.got_speed = msg.param_value/100.0
-
-
-def handle_input(self,debug,ac,gcs,readable):
-	try:
-		if sys.stdin in readable:
-			line = sys.stdin.readline()
-			match = re.search(r'(\w+) (\w+) (\S+)', line)
-			if match:
-				if match.group(1) == 'debug':
-					if match.group(2) == 'speed':
-						if match.group(3) == 'on':
-							print("DEBUG SPEED SET ON")
-							debug_speed = True
-						else:
-							print("DEBUG SPEED SET OFF")
-							debug_speed = False
-					if match.group(2) == 'mission':
-						if match.group(3) == 'on':
-							print("DEBUG MISSION SET ON")
-							debug_mission = True
-						else:
-							print("DEBUG MISSION SET OFF")
-							debug_mission = False
-					if match.group(2) == 'general':
-						if match.group(3) == 'on':
-							print("DEBUG GENERAL SET ON")
-							debug = True
-						else:
-							print("DEBUG GENERAL SET OFF")
-							debug = False
-					if match.group(2) == 'position':
-						if match.group(3) == 'on':
-							print("DEBUG POSITION SET ON")
-							debug_position = True
-						else:
-							print("DEBUG POSITION SET OFF")
-							debug_position = False
-					if match.group(2) == 'distance':
-						if match.group(3) == 'on':
-							print("DEBUG DISTANCE SET ON")
-							debug_dist = True
-						else:
-							print("DEBUG DISTANCE SET OFF")
-							debug_dist = False
-					if match.group(2) == 'alt':
-						if match.group(3) == 'on':
-							print("DEBUG ALT SET ON")
-							debug_alt = True
-						else:
-							print("DEBUG ALT SET OFF")
-							debug_alt = False
-					if match.group(2) == 'wind':
-						if match.group(3) == 'on':
-							print("DEBUG WIND SET ON")
-							debug_wind = True
-						else:
-							print("DEBUG WIND SET OFF")
-							debug_wind = False
-
-				elif match.group(1) == 'set':
-					if match.group(2) == 'alt':
-						print('SET ALT TO {0}'.format(match.group(3)))
-						z = int(match.group(3))
-						if z > 500:
-							z = 500
-						if z < 50:
-							z = 50
-						ac.set_alt = z
-
-					elif match.group(2) == 'x':
-						x = int(match.group(3))
-						if x > 500:
-							x = 500
-						if x < -500:
-							x = -500
-						ac.set_x = x
-						print('SET X TO {0}'.format(match.group(3)))
-
-					elif match.group(2) == 'y':
-						y = int(match.group(3))
-						if y > 500:
-							y = 500
-						if y < -500:
-							y = -500
-						ac.set_y = y
-						print('SET Y TO {0}'.format(match.group(3)))
-					elif match.group(2) == 'wind':
-						if match.group(3) == "off":
-							ac.set_wind = False
-							print('SET WIND TO OFF')
-						else:
-							wind_speed = int(match.group(3))
-							ac.set_wind_speed = wind_speed
-							ac.set_wind = True
-							print('SET WIND SPEED TO {0}'.format(ac.set_wind_speed))
-							print('SET WIND DIRECTION TO {0}'.format(ac.set_wind_direction))
-
-					elif match.group(2) == 'wind_dir':
-						if match.group(3) == "off":
-							ac.set_wind = False
-							print('SET WIND TO OFF')
-						else:
-							wind_dir = int(match.group(3))
-							ac.set_wind_direction = wind_dir
-							ac.set_wind = True
-							print('SET WIND SPEED TO {0}'.format(ac.set_wind_speed))
-							print('SET WIND DIRECTION TO {0}'.format(ac.set_wind_direction))
-
-					else:
-						print("NOT A KNOWN COMMAND: {0}".format(match.group(2)))
-				else:
-					print("NOT A KNOWN COMMAND: {0}".format(match.group(1)))
-			else:
-				print('COMMAND NOT FORMATED PROPERLY')
-		#return debug
-
-	except:
-	 	print("Couldn't read from stdin")
+PRINT_RATE = 1 # rate to print debug options in seconds
 
 
 ## Setup
 
-ac = Aircraft(ac_host)
-ac.connect()
+ac = Aircraft.Aircraft(ac_host)
+if not ac.connect():
+	print("Unable to connect to aircraft! Exiting!")
+	exit(0)
 
-gcs = GCS(gps_port)
-gcs.connect()
+gcs = GCS.GroundControlStation(gps_port)
+if not gcs.connect():
+	print("Unable to connect to GPS! Exiting!")
+	exit(0)
+
 gcs.set_wp_dist(WP_DISATNCE)
 
-debug = []
-debug['debug_gen'] = False
-debug['debug_speed'] = False
-debug['debug_dist'] = False
-debug['debug_mission'] = False
-debug['debug_position'] = False
-debug['debug_alt'] = False
-debug['debug_wind'] = False
 
-# Wait for GPS
-while (not gcs.lat):
-	readable, writable, exceptional = select.select([x for x in [ac.mav.fd, gcs.gps, sys.stdin] if x is not None], [], [])
-	gcs.update()
 
-ac.set_point(gcs.lat,gcs.lon,ALT_BASE)
-
-# Wait for AC GPS
-while (not ac.lat):
-	readable, writable, exceptional = select.select([x for x in [ac.mav.fd, gcs.gps, sys.stdin] if x is not None], [], [])
-	ac.update()
+debug = {'debug_gen': False,
+		 'debug_speed': False,
+		 'debug_dist': False,
+		 'debug_mission': False,
+		 'debug_position':False,
+		 'debug_alt': False,
+		 'debug_wind': False }
 
 print_timer = time.time()
 print_timer_last = time.time()
-output_timer = time.time()
-output_timer_last = time.time()
+rate_timer = time.time()
+rate_timer_last = time.time()
 
-speed = 15
-
+# just as safety set safe initial values
+speed = AIRSPEED_MIN + 2 
+ac.set_point(gcs.lat,gcs.lon,ALT_BASE)
 lat = gcs.lat
 lon = gcs.lon
 
@@ -520,16 +90,16 @@ while sys.stdin:
 
 
 	## Update devices
-	ac.update()
-	gcs.update()
-	handle_input(debug,ac,gcs)
+	ac.update(readable, debug)
+	gcs.update(readable)
+	helpers.handle_input(debug,ac,gcs,readable)
 
 
 	## Calculate lat lon of set point
 	alpha = math.radians(gcs.heading * -1)
 	dist_x = ac.set_x*math.cos(alpha) - ac.set_y*math.sin(alpha)
 	dist_y = ac.set_x*math.sin(alpha) + ac.set_y*math.cos(alpha)
-	ac.set_lat, ac.set_lon = dist_to_latlon(gcs.lat,gcs.lon,dist_y,dist_x)
+	ac.set_lat, ac.set_lon = helpers.dist_to_latlon(gcs.lat,gcs.lon,dist_y,dist_x)
 
 
 	## Calculate alt to set
@@ -538,7 +108,7 @@ while sys.stdin:
 
 	## Speed controller
 	# Get distance between car and ac. x east/west, y north/south
-	ac_x,ac_y = latlon_to_dist(ac.set_lat-ac.lat,ac.set_lon-ac.lon, gcs.lat)
+	ac_x,ac_y = helpers.latlon_to_dist(ac.set_lat-ac.lat,ac.set_lon-ac.lon, gcs.lat)
 	ac_y *= -1
 	ac_x *= -1
 	# Calculate the position of ac relative to car
@@ -550,9 +120,9 @@ while sys.stdin:
 	# Calculate corrected speed
 	p_offset = error * error
 	if error < 0:
-		p_offset *= GAIN_FRONT
+		p_offset *= P_GAIN_FRONT
 	else:
-		p_offset *= GAIN_BACK *-1
+		p_offset *= P_GAIN_BACK *-1
 
 	speed = gcs.speed + p_offset
 	speed_temp = speed
@@ -575,16 +145,16 @@ while sys.stdin:
 
 
 	## Send out data and update wp
-	output_timer = time.time()
-	if (output_timer - output_timer_last) > UPDATE_RATE:
-		output_timer_last = time.time()
+	rate_timer = time.time()
+	if (rate_timer - rate_timer_last) > UPDATE_RATE:
+		rate_timer_last = time.time()
 		
 		# Calculate next waypoint
 		y = gcs.wp_distance * math.cos(math.radians(gcs.heading))
 		x = gcs.wp_distance * math.sin(math.radians(gcs.heading))
 
 		# Send new waypoint
-		lat, lon = dist_to_latlon(ac.set_lat,ac.set_lon,y,x)
+		lat, lon = helpers.dist_to_latlon(ac.set_lat,ac.set_lon,y,x)
 		ac.set_point(lat,lon,ac.set_alt)
 		ac.set_rally(gcs)
 
@@ -592,7 +162,7 @@ while sys.stdin:
 		ac.set_speed(speed)
 
 
-	## Print out debug info and send kml data
+	## Print out debug info and send json to kml updater
 	print_timer = time.time()
 	if (print_timer - print_timer_last) > PRINT_RATE:
 		print_timer_last = time.time()
@@ -621,14 +191,5 @@ while sys.stdin:
 			print("Set Wind Speed: {0}, Set Wind Direction: {1}".format(ac.set_wind_speed, ac.set_wind_direction))
 			print("Send Speed: {0}".format(speed))
 
-		# Send out JSON data for kml updater
-		ac_msg = '{"type":"ac","lat":' + str(ac.lat) + ',"lon":' + str(ac.lon) + ',"alt":' + str(ac.relative_alt) + ',"heading":' + str(ac.heading) + '}'
-		wp_msg = '{"type":"wp","lat":' + str(ac.wp_lat) + ',"lon":' + str(ac.wp_lon) + ',"alt":' + str(ac.wp_alt) + ',"heading":' + str(0) + '}'
-		set_msg = '{"type":"set","lat":' + str(ac.set_lat) + ',"lon":' + str(ac.set_lon) + ',"alt":' + str(ac.set_alt) + ',"heading":' + str(0) + '}'
-		gcs_msg = '{"type":"gcs","lat":' + str(gcs.lat) + ',"lon":' + str(gcs.lon) + ',"alt":' + str(0.0) + ',"heading":' + str(gcs.heading) +'}'
-
-		sock.sendto(ac_msg, (UDP_IP, UDP_PORT))
-		sock.sendto(wp_msg, (UDP_IP, UDP_PORT))
-		sock.sendto(set_msg, (UDP_IP, UDP_PORT))
-		sock.sendto(gcs_msg, (UDP_IP, UDP_PORT))
+		helpers.udp_json_output(gcs,ac,UDP_IP,UDP_PORT)
 			

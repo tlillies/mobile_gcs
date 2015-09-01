@@ -1,5 +1,10 @@
-#mobile-gcs.py
+#Aircraft.py
 #Research and Engineering Center for Unmanned Vehicles
+import time
+import sys
+
+from pymavlink import mavutil
+from pymavlink import mavwp
 
 class Aircraft:
 	""" Class for Aircraft data """
@@ -71,30 +76,33 @@ class Aircraft:
 		self.got_speed = 0
 
 	def connect(self):
-		print("Connecting to autopilot...")
-		#self.mav = mavutil.mavlink_connection('/dev/ttyACM0', use_native=False,baud=921600, dialect="ardupilotmega")
-		self.mav = mavutil.mavlink_connection(self.host, use_native=False)
-		print("Connected to autopilot!")
+		try:
+			print("Connecting to autopilot...")
+			self.mav = mavutil.mavlink_connection(self.host, use_native=False)
+			print("Connected to autopilot!")
 
-		print("Waiting for heartbeat...")
-		self.mav.wait_heartbeat(blocking=True)
-		print("Got Heartbeat!")
-		print("Waiting for plane GPS")
-		msg = self.mav.recv_match(type=['GLOBAL_POSITION_INT'],blocking=True)
-		print("Got plane GPS!")
+			print("Waiting for heartbeat...")
+			self.mav.wait_heartbeat(blocking=True)
+			print("Got Heartbeat!")
+			print("Waiting for plane GPS")
+			msg = self.mav.recv_match(type=['GLOBAL_POSITION_INT'],blocking=True)
+			print("Got plane GPS!")
 
-		self.lat = (msg.lat) / (10000000.0)
-		self.lon = (msg.lon) / (10000000.0)
-		self.alt = msg.alt
-		self.relative_alt = (msg.relative_alt) / (1000.0)
-		self.heading = (msg.hdg) / (100.0)
+			self.lat = (msg.lat) / (10000000.0)
+			self.lon = (msg.lon) / (10000000.0)
+			self.alt = msg.alt
+			self.relative_alt = (msg.relative_alt) / (1000.0)
+			self.heading = (msg.hdg) / (100.0)
 
-		self.rally = mavwp.MAVRallyLoader(self.mav.target_system,self.mav.target_component)
-		self.rally.create_and_append_rally_point(self.lat * 1e7,self.lon * 1e7 ,100,50,0,0)
-		self.rallypoint = self.rally.rally_point(0)
-		self.rallypoint.target_system = self.mav.target_system
-		self.rallypoint.target_component = self.mav.target_component
-		self.mav.mav.send(self.rallypoint)
+			self.rally = mavwp.MAVRallyLoader(self.mav.target_system,self.mav.target_component)
+			self.rally.create_and_append_rally_point(self.lat * 1e7,self.lon * 1e7 ,100,50,0,0)
+			self.rallypoint = self.rally.rally_point(0)
+			self.rallypoint.target_system = self.mav.target_system
+			self.rallypoint.target_component = self.mav.target_component
+			self.mav.mav.send(self.rallypoint)
+			return True
+		except:
+			return False
 
 	def set_point(self, lat, lon, alt):
 		# Set new guided wp for ac
@@ -116,6 +124,14 @@ class Aircraft:
 
 		self.mav.mav.send(msg)
 
+	def set_as_minmax(as_min,as_max):
+		if as_min < 5:
+			as_min = 5
+		if as_max > 40:
+			as_max = 40
+		self.as_min = as_min
+		self.as_max = as_max
+
 	def set_rally(self,gcs):
 		self.rally.move(1,gcs.lat,gcs.lon)
 		self.rallypoint = self.rally.rally_point(0)
@@ -124,10 +140,10 @@ class Aircraft:
 		self.mav.mav.send(self.rallypoint)
 
 	def set_speed(self, speed):
-		if speed < 14:
-			speed = 14
-		if speed > 30:
-			speed = 30
+		if speed < self.as_min:
+			speed = self.as_min
+		if speed > self.as_max:
+			speed = self.as_max
 
 		msg = mavutil.mavlink.MAVLink_param_set_message(self.mav.target_system,
             self.mav.target_component,
@@ -138,11 +154,7 @@ class Aircraft:
 		self.mav.mav.send(msg)
 		
 
-	def update(self):
-		global readable
-		global debug_mission
-
-
+	def update(self,readable,debug):
 		self.heartbeat_timeout = time.time() - self.heartbeat_time
 		if self.heartbeat_timeout > 3:
 			print("LOST HEARTBEAT!!!")
@@ -168,13 +180,13 @@ class Aircraft:
 				if msg.get_type() == "MISSION_REQUEST":
 					if self.wp:
 						self.mav.mav.send(self.wp.wp(msg.seq))
-						if debug_mission:
+						if debug['debug_mission']:
 							print('Sending waypoint {0}'.format(msg.seq))
 				if msg.get_type() == "MISSION_ACK":
-					if debug_mission:
+					if debug['debug_mission']:
 						print('MISSION_ACK %i' % msg.type)
 				if msg.get_type() == "COMMAND_ACK":
-					if debug_mission:
+					if debug['debug_mission']:
 						print('COMMAND_ACK command: {0} result: {1}'.format(msg.command,msg.result))
 				if msg.get_type() == "PARAM_VALUE":
-						ac.got_speed = msg.param_value/100.0
+						self.got_speed = msg.param_value/100.0

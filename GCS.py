@@ -1,7 +1,13 @@
-#mobile-gcs.py
+#GCS.py
 #Research and Engineering Center for Unmanned Vehicles
 
-class GCS:
+import serial
+import re
+import select
+import time
+import sys
+
+class GroundControlStation:
 	""" Class for GCS data """
 	def __init__(self, port):
 		# lat lon alt of actual car
@@ -13,10 +19,6 @@ class GCS:
 		self.lon_wp = None
 		self.alt_wp = None
 
-		self.lastset_lat = None
-		self.lastset_lon = None
-		self.lastset_alt = None
-
 		self.port= port
 		self.gps = None
 
@@ -24,13 +26,16 @@ class GCS:
 		self.speed = None
 		self.heading = None
 
-		self.update_distance = 25
-		self.wp_distance = 200
+		self.wp_distance = 0
 
 		self.error = True
 		self.active = False
 		self.active_timeout = 0
 		self.active_time = time.time()
+
+	def set_wp_dist(self, wp_dist):
+		self.wp_distance = wp_dist
+		return
 
 	def lat_diff(self):
 		# distance between current lat and lat where last wp was set
@@ -44,17 +49,18 @@ class GCS:
 		try:
 			print("Connecting to GPS...")
 			self.gps = serial.Serial(port=self.port, baudrate=4800, timeout=.1)
+			print("Connected to GPS port!")
+			print("Waiting for location data...")
+			while (not self.lat):
+				readable, writable, exceptional = select.select([x for x in [self.gps] if x is not None], [], [])
+				self.update(readable)
 			print("Got GPS!")
+			return True
 		except:
 		    print("GPS CONECT FAILED")
+		    return False
 
-	def set_point(self):
-		self.lastset_lat = self.lat
-		self.lastset_lon = self.lon
-		self.lastset_alt = self.alt
-
-	def update(self):
-		global readable
+	def update(self,readable):
 		#Check for timeout
 		self.active_timeout = time.time() - self.active_time
 		if self.active_timeout > 3:
