@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<!-- saved from url=(0054)http://getbootstrap.com/examples/sticky-footer-navbar/ -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="assets/agribotix_favicon.ico">
+
+    <title>Mobile GCS</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+<!-- Font Awesome CSS -->
+<link rel="stylesheet" href="css/font-awesome.min.css">
+
+    <!-- Custom styles for this template -->
+    <link href="css/agriphoto.css" rel="stylesheet">
+
+  </head>
+
+  <body>
+
+    <!-- Fixed navbar -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="index.html">MOBILE GCS</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li class="active"><a href="index.html"><i class="fa fa-lg fa-plane"></i> System Status</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+
+    <!-- Begin page content -->
+    <div class="container">
+      <!--<div class="page-header">
+        <h1>AgriPhoto</h1>
+      </div>-->
+
+      	<h2>General</h2>
+		<p><strong>Status:</strong> <span id="statusmsg"></span></p>
+        <h2>Aircraft</h2>
+    <p><strong>Location:</strong> <span id="aclatlon"></span></p>
+    <p><strong>Speed:</strong> <span id="speed"></span></p>
+    <p><strong>Set Speed:</strong> <span id="setspeed"></span></p>
+    <p><strong>No Wind Correction:</strong> <span id="nowinspeed"></span></p>
+    <p><strong>Wind:</strong> <span id="wind"></span></p>
+    <p><strong>Set Wind:</strong> <span id="setwind"></span></p>
+    <p><strong>Alt:</strong> <span id="alt"></span></p>
+    <p><strong>Set Alt</strong> <span id="setalt"></span></p>
+    <p><strong>Set X/Y</strong> <span id="setxy"></span></p>
+        <h2>Car</h2>
+    <p><strong>Location:</strong> <span id="gcslatlon"></span></p>
+<!-- 		<p><strong>CSV Filename:</strong> <span id="csvfile"></span></p>
+		<p><strong>ZIP Filename:</strong> <span id="zipfile"></span></p> -->
+		
+<!-- 		<h2>Camera Status</h2>
+		<p><strong>Image Count:</strong> <span id="cam1_count"></span></p>
+		<p><strong>Current Image:</strong> <span id="cam1_img"></span></p>
+		<p><strong>Pending Downloads:</strong> <span id="cam1_pending"></span></p>
+		<p><strong>Last Activity:</strong> <span id="cam1_lastact"></span></p> -->
+
+    <h2>Command</h2>
+
+    <select id="cmd">
+      <option value="x">x</option>
+      <option value="y">y</option>
+      <option value="alt">alt</option>
+      <option value="wind">wind</option>
+      <option value="wind_dir">wind_dir</option>
+    </select>
+    <form action="demo_form.asp">
+        <input type="text" name="value" id="num_value"><br>
+    </form>
+    <button type="button" class="btn btn-default" onClick="sendGET()">Send</button>
+    <script>
+    function sendGET() {
+      cmd = document.getElementById("cmd").value;
+      num = document.getElementById("num_value").value;
+      $.get('http://0.0.0.0:9000/set/' + cmd + '/' + num)
+    }
+    </script>
+
+    </div>
+
+    <footer class="footer">
+      <div class="container">
+      </div>
+    </footer>
+
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="js/jquery.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/agriphoto.js"></script>
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <script src="js/ie10-viewport-bug-workaround.js"></script>
+  
+
+</body></html>

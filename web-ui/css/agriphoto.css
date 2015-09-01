@@ -1,0 +1,88 @@
+.container {
+	font-family: 'Segoe UI Light', 'Open Sans Light', Verdana, Arial, Helvetica, sans-serif;
+	/*letter-spacing: 0.05em;*/
+}
+
+.navbar-brand {
+	white-space: nowrap;
+	line-height: 32px;
+	padding: 9px 15px;
+	border-right: 1px solid #666666;
+}
+
+.navbar-brand>img {
+	display: inline-block;
+}
+
+.navbar-default .navbar-brand {
+	color: #ffffff;
+}
+
+.navbar-default .navbar-brand:hover {
+	color: #ffffff;
+	background-color: #666666;
+}
+
+.navbar-fixed-top {
+	background-color: #333333;
+	border: none;
+	box-shadow: 0 2px 6px rgba(0,0,0,0.3),0 3px 8px rgba(0,0,0,0.2);
+}
+
+.navbar-default .navbar-nav>.active>a {
+	background-color: #444444;
+	color: #ffffff;
+}
+
+.navbar-default .navbar-nav>li>a {
+	color: #ffffff;
+}
+
+.navbar-default .navbar-nav>.active>a:hover , .navbar-default .navbar-nav>li>a:hover {
+	color: #ffffff;
+	background-color: #666666;
+}
+
+/* Sticky footer styles
+-------------------------------------------------- */
+html {
+  position: relative;
+  min-height: 100%;
+}
+body {
+  /* Margin bottom by footer height plus spacing */
+  margin-bottom: 105px;
+}
+.footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  /* Set the fixed height of the footer here */
+  height: 90px;
+  background-color: #f5f5f5;
+}
+
+
+/* Custom page CSS
+-------------------------------------------------- */
+/* Not required for template or sticky footer method. */
+
+body > .container {
+  padding: 60px 15px 0;
+}
+.container .text-muted {
+  margin: 20px 0;
+}
+
+.footer > .container {
+  padding-right: 15px;
+  padding-left: 15px;
+}
+
+.footer .footer-item {
+  padding: 15px;
+}
+
+code {
+  font-size: 80%;
+}

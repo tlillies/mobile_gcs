@@ -102,49 +102,37 @@ def handle_input(debug,ac,gcs,readable):
 				elif match.group(1) == 'set':
 					if match.group(2) == 'alt':
 						print('SET ALT TO {0}'.format(match.group(3)))
-						z = int(match.group(3))
-						if z > 500:
-							z = 500
-						if z < 50:
-							z = 50
-						ac.set_alt = z
+						alt = int(match.group(3))
+						#ac.set_alt(alt)
 
 					elif match.group(2) == 'x':
 						x = int(match.group(3))
-						if x > 500:
-							x = 500
-						if x < -500:
-							x = -500
-						ac.set_x = x
+						ac.set_x(x)
 						print('SET X TO {0}'.format(match.group(3)))
 
 					elif match.group(2) == 'y':
 						y = int(match.group(3))
-						if y > 500:
-							y = 500
-						if y < -500:
-							y = -500
-						ac.set_y = y
+						ac.set_y(y)
 						print('SET Y TO {0}'.format(match.group(3)))
 					elif match.group(2) == 'wind':
 						if match.group(3) == "off":
-							ac.set_wind = False
+							ac.set_wind(False)
 							print('SET WIND TO OFF')
 						else:
 							wind_speed = int(match.group(3))
-							ac.set_wind_speed = wind_speed
-							ac.set_wind = True
+							ac.set_wind_speed(wind_speed)
+							ac.set_wind(True)
 							print('SET WIND SPEED TO {0}'.format(ac.set_wind_speed))
 							print('SET WIND DIRECTION TO {0}'.format(ac.set_wind_direction))
 
 					elif match.group(2) == 'wind_dir':
 						if match.group(3) == "off":
-							ac.set_wind = False
+							ac.set_wind(False)
 							print('SET WIND TO OFF')
 						else:
 							wind_dir = int(match.group(3))
-							ac.set_wind_direction = wind_dir
-							ac.set_wind = True
+							ac.set_wind_dir(wind_dir)
+							ac.set_wind(True)
 							print('SET WIND SPEED TO {0}'.format(ac.set_wind_speed))
 							print('SET WIND DIRECTION TO {0}'.format(ac.set_wind_direction))
 

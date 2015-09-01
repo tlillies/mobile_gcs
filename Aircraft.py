@@ -43,8 +43,8 @@ class Aircraft:
 		self.rel_z = None
 
 		# Set point of ac position relative to car in meters
-		self.set_x = 0
-		self.set_y = 0
+		self.x_offset = 0
+		self.y_offset = 0
 		self.set_z = 100
 
 		# max and min alt
@@ -123,6 +123,36 @@ class Aircraft:
             current, 0, 0, radius, 1.0, 0, lat, lon, alt)
 
 		self.mav.mav.send(msg)
+
+	def set_x(self,x):
+		if x > 500:
+			x = 500
+		if x < -500:
+			x = -500
+		self.x_offset = x
+
+	def set_y(self,y):
+		if y > 500:
+			y = 500
+		if y < -500:
+			y = -500
+		self.y_offset = y
+
+	# def set_alt(self,alt):
+	# 	if alt > 500:
+	# 		alt = 500
+	# 	if alt < 50:
+	# 		alt = 50
+	# 	self.set_alt = alt
+
+	def set_wind_speed(self,wind_speed):
+		self.set_wind_speed = wind_speed
+
+	def set_wind_dir(self,wind_dir):
+		self.set_wind_direction = wind_dir
+
+	def set_wind(self, set_wind):
+		self.set_wind = set_wind
 
 	def set_as_minmax(as_min,as_max):
 		if as_min < 5:
