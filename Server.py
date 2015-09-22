@@ -34,14 +34,14 @@ class ImageServerRequestHandler(BaseHTTPRequestHandler):
 		elif request_path[0] == "set":
 			print("got set!")
 			if request_path[1] == "x":
-				self.server.set_x(int(request_path[2]))
+				self.server.set_x(float(request_path[2]))
 			elif request_path[1] == "y":
-				self.server.set_y(int(request_path[2]))
+				self.server.set_y(float(request_path[2]))
 			elif request_path[1] == "wind":
 				if request_path[2] == 'off':
 					self.server.set_wind(False)
 				else:
-					self.server.set_wind_speed(int(request_path[2]))
+					self.server.set_wind_speed(float(request_path[2]))
 					self.server.set_wind(True)
 			elif request_path[1] == "wind_dir":
 				if request_path[2] == 'off':
@@ -50,16 +50,16 @@ class ImageServerRequestHandler(BaseHTTPRequestHandler):
 					self.server.set_wind_dir(int(request_path[2]))
 					self.server.set_wind(True)
 			elif request_path[1] == "alt":
-				pass
+				self.server.set_alt_base(float(request_path[2]))
 			elif request_path[1] == "alt_amplitude":
-				pass
+				self.server.set_alt_amp(float(request_path[2]))
 			elif request_path[1] == "alt_period":
-				pass
+				self.server.set_alt_per(float(request_path[2]))
+				self.server.set_alt_fre((2*math.pi) / float(request_path[2]))
 			elif request_path[1] == "wp_dist":
-				pass
+				self.server.set_wp_distance(float(request_path[2]))
 			elif request_path[1] == "rate":
-				pass
-
+				self.server.set_rate(float(request_path[2]))
 			self.send_response(200)
 			self.send_header("Content-Type", "text/plain")
 			self.send_header("Access-Control-Allow-Origin", self.headers['Origin'])
@@ -74,9 +74,10 @@ class ImageServer(HTTPServer):
 	finish_mission = False
 	status_lock = threading.Lock()
 
-	def __init__(self, servaddr,ac):
+	def __init__(self, servaddr,ac,settings):
 		HTTPServer.__init__(self, servaddr, ImageServerRequestHandler)
 		self.ac = ac
+		self.settings = settings
 		self.telemetry = {}
 		print 'Starting server, use <Ctrl-C> to stop'
 		self.server_thread = threading.Thread(target=self.serve_forever)
@@ -132,9 +133,51 @@ class ImageServer(HTTPServer):
 		self.status_lock.release()
 		return
 
-	def set_wind_dir(self,wind_dir):
+	def set_gain_front(self,gain):
 		self.status_lock.acquire()
-		self.ac.sw_dir(wind_dir)
+		self.settings['p_gain_front'] = gain
+		self.status_lock.release()
+		return
+
+	def set_gain_back(self,gain):
+		self.status_lock.acquire()
+		self.settings['p_gain_back'] = gain
+		self.status_lock.release()
+		return
+
+	def set_alt_base(self,alt):
+		self.status_lock.acquire()
+		self.settings['alt_base'] = alt
+		self.status_lock.release()
+		return
+
+	def set_alt_amp(self,amplitutde):
+		self.status_lock.acquire()
+		self.settings['alt_amp'] = amplitutde
+		self.status_lock.release()
+		return
+
+	def set_alt_per(self,period):
+		self.status_lock.acquire()
+		self.settings['alt_per'] = period
+		self.status_lock.release()
+		return
+
+	def set_alt_fre(self,frequency):
+		self.status_lock.acquire()
+		self.settings['alt_fre'] = frequency
+		self.status_lock.release()
+		return
+
+	def set_wp_distance(self,distance):
+		self.status_lock.acquire()
+		self.settings['wp_distance'] = distance
+		self.status_lock.release()
+		return
+
+	def set_rate(self,rate):
+		self.status_lock.acquire()
+		self.settings['rate'] = rate
 		self.status_lock.release()
 		return
 		

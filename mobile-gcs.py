@@ -27,7 +27,6 @@ ac_host = "udpin:0.0.0.0:14550"
 gps_port = '/tmp/ttyV0'
 #gps_port = '/dev/ttyUSB0' 
 
-
 ## Gains ##
 
 P_GAIN_FRONT = .001  # When the ac is in front of the car
@@ -50,8 +49,20 @@ UPDATE_RATE = .2 # rate to send waypoints/speed in seconds
 PRINT_RATE = 1 # rate to print debug options in seconds
 
 
-## Setup
 
+
+## Setup
+debug = {'debug_gen': False,
+		 'debug_speed': False,
+		 'debug_dist': False,
+		 'debug_mission': False,
+		 'debug_position':False,
+		 'debug_alt': False,
+		 'debug_wind': False }
+telemetry = {}
+settings = {}
+
+# Aircraft
 ac = Aircraft.Aircraft(ac_host)
 if not ac.connect():
 	print("Unable to connect to aircraft! Exiting!")
@@ -62,22 +73,24 @@ if not gcs.connect():
 	print("Unable to connect to GPS! Exiting!")
 	exit(0)
 
+# Ground Vehicle
 gcs.set_wp_dist(WP_DISTANCE)
 
+# Web Server
 servaddr = ('0.0.0.0', 9000)
-server = Server.ImageServer(servaddr, ac)
-	
+server = Server.ImageServer(servaddr, ac,settings)
 server.set_status("Setting up.")
 
-debug = {'debug_gen': False,
-		 'debug_speed': False,
-		 'debug_dist': False,
-		 'debug_mission': False,
-		 'debug_position':False,
-		 'debug_alt': False,
-		 'debug_wind': False }
-telemetry = {}
 
+settings['p_gain_front'] = P_GAIN_FRONT
+settings['p_gain_back'] = P_GAIN_BACK
+settings['alt_base'] = ALT_BASE
+settings['alt_amp'] = ALT_AMP
+settings['alt_per'] = ALT_PER
+settings['alt_fre'] = ALT_FRE
+settings['wp_distance'] = WP_DISTANCE
+settings['rate'] = UPDATE_RATE
+settings['alt_base'] = ALT_BASE
 
 print_timer = time.time()
 print_timer_last = time.time()
@@ -110,7 +123,7 @@ try:
 
 
 		## Calculate alt to set
-		ac.set_alt = ALT_BASE + ALT_AMP * math.sin(ALT_FRE *time.time())
+		ac.set_alt = settings['alt_base'] + settings['alt_amp'] * math.sin(settings['alt_fre'] *time.time())
 
 
 		## Speed controller
@@ -127,9 +140,9 @@ try:
 		# Calculate corrected speed
 		p_offset = error * error
 		if error < 0:
-			p_offset *= P_GAIN_FRONT
+			p_offset *= settings['p_gain_front']
 		else:
-			p_offset *= P_GAIN_BACK *-1
+			p_offset *= settings['p_gain_back'] *-1
 
 		speed = gcs.speed + p_offset
 		speed_temp = speed
@@ -153,7 +166,7 @@ try:
 
 		## Send out data and update wp
 		rate_timer = time.time()
-		if (rate_timer - rate_timer_last) > UPDATE_RATE:
+		if (rate_timer - rate_timer_last) > settings['rate']:
 			rate_timer_last = time.time()
 			
 			# Calculate next waypoint
@@ -178,7 +191,7 @@ try:
 				print("Aircraft-- Lat: {0:14}, Lon: {1:14}, Heading: {2:6}".format(ac.lat,ac.lon,ac.heading))
 				print("Ground  -- Lat: {0:14}, Lon: {1:14}, Heading: {2:6}".format(gcs.lat,gcs.lon,gcs.heading))
 			if debug['debug_alt']:
-				print("Set Alt: {0}, Base Alt: {1}, Alt Amp: {2}, Alt Freq: {3}".format(ac.set_alt,ALT_BASE,ALT_AMP,ALT_FRE))
+				print("Set Alt: {0}, Base Alt: {1}, Alt Amp: {2}, Alt Freq: {3}".format(ac.set_alt,settings['alt_base'],settings['alt_amp'],settings['alt_fre']))
 			if debug['debug_dist']:
 				print("dela_x:{0} dela_y:{1}".format(delta_x,delta_y))
 				print("x:{0} y:{1}".format(x,y))
@@ -217,13 +230,13 @@ try:
 			telemetry['gcsspeed'] = '{:7.3f} m'.format(gcs.speed)
 			
 
-			telemetry['rate'] = '{:7.3f} s'.format(UPDATE_RATE)
-			telemetry['gain_f'] = '{:7.7f}'.format(P_GAIN_FRONT)
-			telemetry['gain_b'] = '{:7.7f}'.format(P_GAIN_BACK)
-			telemetry['altbase'] = '{:7.3f} m'.format(ALT_BASE)
-			telemetry['altamp'] = '{:7.3f} m'.format(ALT_AMP)
-			telemetry['altper'] = '{:7.3f} s'.format(ALT_PER)
-			telemetry['wp_dist'] = '{:7.3f} m'.format(WP_DISTANCE)
+			telemetry['rate'] = '{:7.3f} s'.format(settings['rate'])
+			telemetry['gain_f'] = '{:7.7f}'.format(settings['p_gain_front'])
+			telemetry['gain_b'] = '{:7.7f}'.format(settings['p_gain_back'])
+			telemetry['altbase'] = '{:7.3f} m'.format(settings['alt_base'])
+			telemetry['altamp'] = '{:7.3f} m'.format(settings['alt_amp'])
+			telemetry['altper'] = '{:7.3f} s'.format(settings['alt_per'])
+			telemetry['wp_dist'] = '{:7.3f} m'.format(settings['wp_distance'])
 
 			server.set_status("Running")
 			server.set_telemetry(telemetry)
