@@ -17,7 +17,8 @@ class Aircraft:
 		self.mav = None
 		self.host = host
 
-		self.speed = None
+		self.airspeed = None
+		self.groundspeed = None
 		self.heading = None
 
 		# actual location of ac in lat/lon/alt
@@ -145,13 +146,13 @@ class Aircraft:
 	# 		alt = 50
 	# 	self.set_alt = alt
 
-	def set_wind_speed(self,wind_speed):
+	def sw_speed(self,wind_speed):
 		self.set_wind_speed = wind_speed
 
-	def set_wind_dir(self,wind_dir):
+	def sw_dir(self,wind_dir):
 		self.set_wind_direction = wind_dir
 
-	def set_wind(self, set_wind):
+	def sw(self, set_wind):
 		self.set_wind = set_wind
 
 	def set_as_minmax(as_min,as_max):
@@ -220,3 +221,6 @@ class Aircraft:
 						print('COMMAND_ACK command: {0} result: {1}'.format(msg.command,msg.result))
 				if msg.get_type() == "PARAM_VALUE":
 						self.got_speed = msg.param_value/100.0
+				if msg.get_type() == "VFR_HUD":
+						self.airspeed = msg.airspeed
+						self.groundspeed = msg.groundspeed

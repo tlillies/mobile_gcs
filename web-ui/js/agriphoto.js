@@ -1,22 +1,31 @@
 $(document).ready(function(){
 	setInterval(function(){
-		$.getJSON("http://localhost:9000/status", function(result){
-		    // $("#statusmsg").html(result["status"]);
-			// $("#csvfile").html(result["csvfile"]);
-			// $("#zipfile").html(result["zipfile"]);
-			// $("#cam1_count").html(result["cam1"]["image_count"]);
-			// $("#cam1_img").html(result["cam1"]["current_image"]);
-			// $("#cam1_pending").html(result["cam1"]["pending_dl"]);
-			// $("#cam1_lastact").html(parseInt(result["cam1"]["last_activity"]) + " seconds ago");
-			// $("#cam2_count").html(result["cam2"]["image_count"]);
-			// $("#cam2_img").html(result["cam2"]["current_image"]);
-			// $("#cam2_pending").html(result["cam2"]["pending_dl"]);
-			// $("#cam2_lastact").html(parseInt(result["cam2"]["last_activity"]) + " seconds ago");
+		$.getJSON("http://127.0.0.1:9000/status", function(result){
+		    $("#statusmsg").html(result["status"]);
+			$("#aclatlon").html(result["aclatlon"]);
+			$("#airspeed").html(result["airspeed"]);
+			$("#groundspeed").html(result["groundspeed"]);
+			$("#setspeed").html(result["setspeed"]);
+			$("#nowinspeed").html(result["nowinspeed"]);
+			$("#wind").html(result["wind"]);
+			$("#setwind").html(result["setwind"]);
+			$("#alt").html(result["alt"]);
+			$("#setalt").html(result["setalt"]);
+			$("#setxy").html(result["setxy"]);
+			$("#gcslatlon").html(result["gcslatlon"]);
+			$("#gcsspeed").html(result["gcsspeed"]);
+			$("#rate").html(result["rate"]);
+			$("#gain_f").html(result["gain_f"]);
+			$("#gain_b").html(result["gain_b"]);
+			$("#altbase").html(result["altbase"]);
+			$("#altamp").html(result["altamp"]);
+			$("#altper").html(result["altper"]);
+			$("#wp_dist").html(result["wp_dist"]);
 		})
 			.fail( function() {
-				$("#statusmsg").html("Not running")
-				// $("#csvfile,#zipfile,#cam1_count,#cam1_img,#cam1_pending,#cam1_lastact,#cam2_count,#cam2_img,#cam2_pending,#cam2_lastact").html("");
+				$("#statusmsg").html("Not running");
+				$("#aclatlon,#airspeed,#groundspeed,#setspeed,#nowinspeed,#wind,#setwind,#alt,#setalt,#setxy,#gcslatlon,#gcsspeed").html("");
 
 			});
-	}, 2000);
+	}, 1000);
 });

@@ -40,7 +40,7 @@ ALT_AMP = 0
 ALT_PER = 240
 ALT_FRE = (2*math.pi) / ALT_PER
 
-WP_DISATNCE = 200 # Guided waypoint set distance in front of car
+WP_DISTANCE = 200 # Guided waypoint set distance in front of car
 
 AIRSPEED_MAX = 30
 AIRSPEED_MIN = 14
@@ -62,7 +62,7 @@ if not gcs.connect():
 	print("Unable to connect to GPS! Exiting!")
 	exit(0)
 
-gcs.set_wp_dist(WP_DISATNCE)
+gcs.set_wp_dist(WP_DISTANCE)
 
 servaddr = ('0.0.0.0', 9000)
 server = Server.ImageServer(servaddr, ac)
@@ -76,6 +76,8 @@ debug = {'debug_gen': False,
 		 'debug_position':False,
 		 'debug_alt': False,
 		 'debug_wind': False }
+telemetry = {}
+
 
 print_timer = time.time()
 print_timer_last = time.time()
@@ -87,7 +89,7 @@ speed = AIRSPEED_MIN + 2
 ac.set_point(gcs.lat,gcs.lon,ALT_BASE)
 lat = gcs.lat
 lon = gcs.lon
-
+server.set_status("Entering main loop...")
 print("Entering main loop...")
 try:
 	while sys.stdin:
@@ -197,6 +199,34 @@ try:
 				print("Send Speed: {0}".format(speed))
 
 			helpers.udp_json_output(gcs,ac,UDP_IP,UDP_PORT)
+
+			telemetry['aclatlon'] = '{:13.7f}, {:13.7f} ({:7.3f} degrees)'.format(ac.lat,ac.lon,ac.heading)
+			telemetry['airspeed'] = '{:7.3f} m/s'.format(ac.airspeed)
+			telemetry['groundspeed'] = '{:7.3f} m/s'.format(ac.groundspeed)
+			telemetry['setspeed'] = '{:7.3f} m/s'.format(speed)
+			telemetry['nowinspeed'] = '{:7.3f} m/s'.format(speed_temp)
+			telemetry['wind'] = '{:7.3f} m/s ({:7.3f} degrees)'.format(ac.wind_speed, ac.wind_direction)
+			if ac.set_wind:
+				telemetry['setwind'] = '{:7.3f} m/s ({:7.3f} degrees)'.format(ac.set_wind_speed, ac.set_wind_direction)
+			else:
+				telemetry['setwind'] = 'None'
+			telemetry['alt'] = '{:7.3f} m'.format(ac.relative_alt)
+			telemetry['setalt'] = '{:7.3f} m'.format(ac.set_alt)
+			telemetry['setxy'] = '{0}, {1}'.format(ac.x_offset,ac.y_offset)
+			telemetry['gcslatlon'] = '{:13.7f}, {:13.7f} ({:7.3f} degrees)'.format(gcs.lat,gcs.lon,gcs.heading)
+			telemetry['gcsspeed'] = '{:7.3f} m'.format(gcs.speed)
+			
+
+			telemetry['rate'] = '{:7.3f} s'.format(UPDATE_RATE)
+			telemetry['gain_f'] = '{:7.7f}'.format(P_GAIN_FRONT)
+			telemetry['gain_b'] = '{:7.7f}'.format(P_GAIN_BACK)
+			telemetry['altbase'] = '{:7.3f} m'.format(ALT_BASE)
+			telemetry['altamp'] = '{:7.3f} m'.format(ALT_AMP)
+			telemetry['altper'] = '{:7.3f} s'.format(ALT_PER)
+			telemetry['wp_dist'] = '{:7.3f} m'.format(WP_DISTANCE)
+
+			server.set_status("Running")
+			server.set_telemetry(telemetry)
 
 		# End if web server is finished
 		if server.is_finished():

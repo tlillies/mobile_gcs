@@ -48,42 +48,55 @@
       <!--<div class="page-header">
         <h1>AgriPhoto</h1>
       </div>-->
-
-      	<h2>General</h2>
-		<p><strong>Status:</strong> <span id="statusmsg"></span></p>
-        <h2>Aircraft</h2>
+      <div style="float:left;width:35%">
+        <h3>Aircraft</h3>
     <p><strong>Location:</strong> <span id="aclatlon"></span></p>
-    <p><strong>Speed:</strong> <span id="speed"></span></p>
+    <strong>Air Speed:</strong> <span id="airspeed"></span>
+    <strong>Ground Speed:</strong> <span id="groundspeed"></span>
+    <p></p>
     <p><strong>Set Speed:</strong> <span id="setspeed"></span></p>
     <p><strong>No Wind Correction:</strong> <span id="nowinspeed"></span></p>
     <p><strong>Wind:</strong> <span id="wind"></span></p>
-    <p><strong>Set Wind:</strong> <span id="setwind"></span></p>
     <p><strong>Alt:</strong> <span id="alt"></span></p>
-    <p><strong>Set Alt</strong> <span id="setalt"></span></p>
-    <p><strong>Set X/Y</strong> <span id="setxy"></span></p>
-        <h2>Car</h2>
-    <p><strong>Location:</strong> <span id="gcslatlon"></span></p>
-<!-- 		<p><strong>CSV Filename:</strong> <span id="csvfile"></span></p>
-		<p><strong>ZIP Filename:</strong> <span id="zipfile"></span></p> -->
-		
-<!-- 		<h2>Camera Status</h2>
-		<p><strong>Image Count:</strong> <span id="cam1_count"></span></p>
-		<p><strong>Current Image:</strong> <span id="cam1_img"></span></p>
-		<p><strong>Pending Downloads:</strong> <span id="cam1_pending"></span></p>
-		<p><strong>Last Activity:</strong> <span id="cam1_lastact"></span></p> -->
+    <p><strong>Commanded Alt:</strong> <span id="setalt"></span></p>
 
-    <h2>Command</h2>
+    <h3>Car</h3>
+    <p><strong>Location:</strong> <span id="gcslatlon"></span></p>
+    <p><strong>Speed:</strong> <span id="gcsspeed"></span></p>
+
+      </div>
+      
+        
+<div style="float:left;">
+    <h3>Set Points</h3>
+    <p><strong>X/Y:</strong> <span id="setxy"></span></p>
+    <p><strong>Alt Base:</strong> <span id="altbase"></span></p>
+    <p><strong>Alt Amplitude:</strong> <span id="altamp"></span></p>
+    <p><strong>Alt Period:</strong> <span id="altper"></span></p>
+    <p><strong>Wind:</strong> <span id="setwind"></span></p>
+    <p><strong>Waypoint Distance:</strong> <span id="wp_dist"></span></p>
+    <p><strong>Rate:</strong> <span id="rate"></span></p>
+    <p><strong>Front Gain:</strong> <span id="gain_f"></span></p>
+    <p><strong>Rear Gain:</strong> <span id="gain_b"></span></p>
+
+    <h3>Command</h3>
 
     <select id="cmd">
       <option value="x">x</option>
       <option value="y">y</option>
       <option value="alt">alt</option>
-      <option value="wind">wind</option>
-      <option value="wind_dir">wind_dir</option>
+      <option value="alt_amplitude">alt amplitude</option>
+      <option value="alt_period">alt period</option>
+      <option value="wind">wind speed</option>
+      <option value="wind_dir">wind direction</option>
+      <option value="wp_dist">waypoint distance</option>
+      <option value="rate">rate</option>
     </select>
-    <form action="demo_form.asp">
+    <p></p>
+    <form action="javascript:sendGET()">
         <input type="text" name="value" id="num_value"><br>
     </form>
+    <p></p>
     <button type="button" class="btn btn-default" onClick="sendGET()">Send</button>
     <script>
     function sendGET() {
@@ -92,7 +105,7 @@
       $.get('http://0.0.0.0:9000/set/' + cmd + '/' + num)
     }
     </script>
-
+    </div>
     </div>
 
     <footer class="footer">
