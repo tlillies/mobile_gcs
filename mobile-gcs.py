@@ -59,7 +59,12 @@ debug = {'debug_gen': False,
 		 'debug_position':False,
 		 'debug_alt': False,
 		 'debug_wind': False }
+
+# Telemetry dictionaries 
 telemetry = {}
+ac_tel = {}
+gcs_tel = {}
+
 settings = {}
 
 # Aircraft
@@ -213,30 +218,41 @@ try:
 
 			helpers.udp_json_output(gcs,ac,UDP_IP,UDP_PORT)
 
-			telemetry['aclatlon'] = '{:13.7f}, {:13.7f} ({:7.3f} degrees)'.format(ac.lat,ac.lon,ac.heading)
-			telemetry['airspeed'] = '{:7.3f} m/s'.format(ac.airspeed)
-			telemetry['groundspeed'] = '{:7.3f} m/s'.format(ac.groundspeed)
-			telemetry['setspeed'] = '{:7.3f} m/s'.format(speed)
-			telemetry['nowinspeed'] = '{:7.3f} m/s'.format(speed_temp)
-			telemetry['wind'] = '{:7.3f} m/s ({:7.3f} degrees)'.format(ac.wind_speed, ac.wind_direction)
+			ac_tel['lat'] = '{:13.7f}'.format(ac.lat)
+			ac_tel['lon'] = '{:13.7f}'.format(ac.lon)
+			ac_tel['heading'] = '{:7.3f}'.format(ac.heading)
+			ac_tel['airspeed'] = '{:7.3f}'.format(ac.airspeed)
+			ac_tel['groundspeed'] = '{:7.3f}'.format(ac.groundspeed)
+			ac_tel['setspeed'] = '{:7.3f}'.format(speed)
+			ac_tel['nowinspeed'] = '{:7.3f}'.format(speed_temp)
+			telemetry['wind'] = '{:7.3f}'.format(ac.wind_speed)
+			telemetry['wind_dir'] = '{:7.3f}'.format(ac.wind_direction)
 			if ac.set_wind:
-				telemetry['setwind'] = '{:7.3f} m/s ({:7.3f} degrees)'.format(ac.set_wind_speed, ac.set_wind_direction)
+				telemetry['setwind'] = '{:7.3f}'.format(ac.set_wind_speed)
+				telemetry['setwind_dir'] = '{:7.3f}'.format(ac.set_wind_direction)
+				telemetry['wind'] = '{:7.3f}'.format(ac.set_wind_speed)
+				telemetry['wind_dir'] = '{:7.3f}'.format(ac.set_wind_direction)
 			else:
 				telemetry['setwind'] = 'None'
-			telemetry['alt'] = '{:7.3f} m'.format(ac.relative_alt)
-			telemetry['setalt'] = '{:7.3f} m'.format(ac.set_alt)
-			telemetry['setxy'] = '{0}, {1}'.format(ac.x_offset,ac.y_offset)
-			telemetry['gcslatlon'] = '{:13.7f}, {:13.7f} ({:7.3f} degrees)'.format(gcs.lat,gcs.lon,gcs.heading)
-			telemetry['gcsspeed'] = '{:7.3f} m'.format(gcs.speed)
-			
+			ac_tel['alt'] = '{:7.3f}'.format(ac.relative_alt)
+			ac_tel['setalt'] = '{:7.3f}'.format(ac.set_alt)
+			ac_tel['setx'] = '{0}'.format(ac.x_offset)
+			ac_tel['sety'] = '{0}'.format(ac.y_offset)
+			gcs_tel['lat'] = '{:13.7f}'.format(gcs.lat)
+			gcs_tel['lon'] = '{:13.7f}'.format(gcs.lon)
+			gcs_tel['heading'] = '{:7.3f}'.format(gcs.heading)
+			gcs_tel['speed'] = '{:7.3f}'.format(gcs.speed)
 
-			telemetry['rate'] = '{:7.3f} s'.format(settings['rate'])
+			telemetry['rate'] = '{:7.3f}'.format(settings['rate'])
 			telemetry['gain_f'] = '{:7.7f}'.format(settings['p_gain_front'])
 			telemetry['gain_b'] = '{:7.7f}'.format(settings['p_gain_back'])
-			telemetry['altbase'] = '{:7.3f} m'.format(settings['alt_base'])
-			telemetry['altamp'] = '{:7.3f} m'.format(settings['alt_amp'])
-			telemetry['altper'] = '{:7.3f} s'.format(settings['alt_per'])
-			telemetry['wp_dist'] = '{:7.3f} m'.format(settings['wp_distance'])
+			telemetry['altbase'] = '{:7.3f}'.format(settings['alt_base'])
+			telemetry['altamp'] = '{:7.3f}'.format(settings['alt_amp'])
+			telemetry['altper'] = '{:7.3f}'.format(settings['alt_per'])
+			telemetry['wp_dist'] = '{:7.3f}'.format(settings['wp_distance'])
+
+			telemetry['ac'] = ac_tel
+			telemetry['gcs'] = gcs_tel
 
 			server.set_status("Running")
 			server.set_telemetry(telemetry)

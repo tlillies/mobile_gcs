@@ -50,76 +50,19 @@
       </div>-->
       <div style="float:left;width:35%">
         <h3>Aircraft</h3>
-    <p><strong>Location:</strong> <span id="aclatlon"></span></p>
-    <strong>Air Speed:</strong> <span id="airspeed"></span>
-    <strong>Ground Speed:</strong> <span id="groundspeed"></span>
+    <p><strong>Location:</strong> <span id="aclat"></span>,<span id="aclon"></span> (<span id="acheading"></span>&deg;)</p>
+    <strong>Air Speed:</strong> <span id="airspeed"></span> m/s
+    <strong>Ground Speed:</strong> <span id="groundspeed"></span> m/s
     <p></p>
-    <p><strong>Set Speed:</strong> <span id="setspeed"></span></p>
-    <p><strong>No Wind Correction:</strong> <span id="nowinspeed"></span></p>
-    <p><strong>Wind:</strong> <span id="wind"></span></p>
-    <p><strong>Alt:</strong> <span id="alt"></span></p>
-    <p><strong>Commanded Alt:</strong> <span id="setalt"></span></p>
+    <p><strong>Set Speed:</strong> <span id="setspeed"></span>m/s</p> 
+    <p><strong>No Wind Correction:</strong> <span id="nowinspeed"></span>m/s</p>
+    <p><strong>Wind:</strong> <span id="wind"></span> m/s (<span id="winddir"></span>&deg;)</p>
+    <p><strong>Alt:</strong> <span id="alt"></span> m</p>
+    <p><strong>Commanded Alt:</strong> <span id="setalt"></span> m</p>
 
     <h3>Car</h3>
-    <p><strong>Location:</strong> <span id="gcslatlon"></span></p>
-    <p><strong>Speed:</strong> <span id="gcsspeed"></span></p>
-
-      </div>
-      
-        
-<div style="float:left;width:35%">
-    <h3>Set Points</h3>
-    <p><strong>X/Y:</strong> <span id="setxy"></span>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">-10</button>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">+10</button>
-    </p>
-    <div style="height:8px;"></div>
-    <p><strong>X/Y:</strong> <span id="setxy"></span>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">-10</button>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">+10</button>
-    </p>
-    <div style="height:8px;"></div>
-    <p><strong>Alt Base:</strong> <span id="altbase"></span>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">-10</button>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">+10</button>
-    </p>
-    <div style="height:8px;"></div>
-
-    <p><strong>Alt Amplitude:</strong> <span id="altamp"></span>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">-10</button>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">+10</button>
-    </p>
-    <div style="height:8px;"></div>
-    <p><strong>Alt Period:</strong> <span id="altper"></span>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">-10</button>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">+10</button>
-    </p>
-    <div style="height:8px;"></div>
-    <p><strong>Wind:</strong> <span id="setwind"></span>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">-1</button>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">+1</button>
-    </p>
-    <div style="height:8px;"></div>
-    <p><strong>Waypoint Distance:</strong> <span id="wp_dist"></span>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">-15</button>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">+15</button>
-    </p>
-    <div style="height:8px;"></div>
-    <p><strong>Rate:</strong> <span id="rate"></span>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">-.05</button>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">+.05</button>
-    </p>
-    <div style="height:8px;"></div>
-    <p><strong>Front Gain:</strong> <span id="gain_f"></span>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">-.001</button>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">+.001</button>
-    </p>
-    <div style="height:8px;"></div>
-    <p><strong>Rear Gain:</strong> <span id="gain_b"></span>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">-.001</button>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">+.001</button>
-    </p>
-    <p></p>
+    <p><strong>Location:</strong> <span id="gcslat"></span>, <span id="gcslon"></span> (<span id="gcsheading"></span>&deg;)</p>
+    <p><strong>Speed:</strong> <span id="gcsspeed"></span> m/s</p>
 
     <h3>Command</h3>
 
@@ -147,6 +90,81 @@
       $.get('http://0.0.0.0:9000/set/' + cmd + '/' + num)
     }
     </script>
+
+      </div>
+      
+        
+<div style="float:left;width:35%">
+    <h3>Set Points</h3>
+    <script>
+    function sendGET2(command,id,add_value) {
+      console.log(id.innerHTML)
+      new_value = parseFloat(id.innerHTML) + add_value
+      $.get('http://0.0.0.0:9000/set/' + command + '/' + new_value)
+      console.log(new_value)
+    }
+    </script>
+    <p><strong>X:</strong> <span id="setx"></span> m
+      <button type="button" class="btn btn-default" onClick="sendGET2('x',setx,10)" style="float:right;width:60px">+10</button>
+      <button type="button" class="btn btn-default" onClick="sendGET2('x',setx, -10)" style="float:right;width:60px">-10</button>
+    </p>
+    <div style="height:8px;"></div>
+    <p><strong>Y:</strong> <span id="sety"></span> m
+      <button type="button" class="btn btn-default" onClick="sendGET2('y',sety,10)" style="float:right;width:60px">+10</button>
+      <button type="button" class="btn btn-default" onClick="sendGET2('y',sety,-10)" style="float:right;width:60px">-10</button>
+    </p>
+    <div style="height:8px;"></div>
+    <p><strong>Alt Base:</strong> <span id="altbase"></span> m
+      <button type="button" class="btn btn-default" onClick="sendGET2('alt',altbase,10)" style="float:right;width:60px">+10</button>
+      <button type="button" class="btn btn-default" onClick="sendGET2('alt',altbase,-10)" style="float:right;width:60px">-10</button>
+    </p>
+    <div style="height:8px;"></div>
+
+    <p><strong>Alt Amplitude:</strong> <span id="altamp"></span> m
+      <button type="button" class="btn btn-default" onClick="sendGET2('alt_amplitude',altamp,10)" style="float:right;width:60px">+10</button>
+      <button type="button" class="btn btn-default" onClick="sendGET2('alt_amplitude',altamp,-10)" style="float:right;width:60px">-10</button>
+    </p>
+    <div style="height:8px;"></div>
+    <p><strong>Alt Period:</strong> <span id="altper"></span> s
+      <button type="button" class="btn btn-default" onClick="sendGET2('alt_per',altper,10)" style="float:right;width:60px">+10</button>
+      <button type="button" class="btn btn-default" onClick="sendGET2('alt_per',altper,-10)" style="float:right;width:60px">-10</button>
+    </p>
+    <div style="height:8px;"></div>
+    <p><strong>Wind:</strong> <span id="setwind"></span> m
+      <button type="button" class="btn btn-default" onClick="sendGET2('wind',setwind,10)" style="float:right;width:60px">+1</button>
+      <button type="button" class="btn btn-default" onClick="sendGET2('wind',setwind,-10)" style="float:right;width:60px">-1</button>
+    </p>
+    <div style="height:8px;"></div>
+    <p><strong>Wind Direction:</strong> <span id="setwinddir"></span> &deg;
+      <button type="button" class="btn btn-default" onClick="sendGET2('wind_dir',wp_diste,15)" style="float:right;width:60px">+15</button>
+      <button type="button" class="btn btn-default" onClick="sendGET2('wind_dir',wp_dist,-15)" style="float:right;width:60px">-15</button>
+    </p>
+    <div style="height:8px;"></div>
+    <p><strong>Waypoint Distance:</strong> <span id="wp_dist"></span> m
+      <button type="button" class="btn btn-default" onClick="sendGET2('wp_dist',wp_dist,15)" style="float:right;width:60px">+15</button>
+      <button type="button" class="btn btn-default" onClick="sendGET2('wp_dis',wp_dist,-15)" style="float:right;width:60px">-15</button>
+    </p>
+    <div style="height:8px;"></div>
+    <p><strong>Update Rate:</strong> <span id="rate"></span> s
+      <button type="button" class="btn btn-default" onClick="sendGET2('rate',rate,.05)" style="float:right;width:60px">+.05</button>
+      <button type="button" class="btn btn-default" onClick="sendGET2('rate',rate,-.05)" style="float:right;width:60px">-.05</button>
+    </p>
+    <div style="height:8px;"></div>
+    <p><strong>Front Gain:</strong> <span id="gain_f"></span>
+      <button type="button" class="btn btn-default" onClick="sendGET2('alt',gain_f,.001)" style="float:right;width:60px">+.001</button>
+      <button type="button" class="btn btn-default" onClick="sendGET2('alt',gain_f,.001)" style="float:right;width:60px">-.001</button>
+    </p>
+    <div style="height:8px;"></div>
+    <p><strong>Rear Gain:</strong> <span id="gain_b"></span>
+      <button type="button" class="btn btn-default" onClick="sendGET2('alt',gain_b,.001)" style="float:right;width:60px">+.001</button>
+      <button type="button" class="btn btn-default" onClick="sendGET2('alt',gain_b,-.001)" style="float:right;width:60px">-.001</button>
+    </p>
+    <div style="height:8px;"></div>
+    <p><strong>Tracking:</strong> <span id="tracking">Off</span>
+      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">On</button>
+      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">Off</button>
+    </p>
+    <p></p>
     </div>
     </div>
 

@@ -34,6 +34,15 @@ class ImageServerRequestHandler(BaseHTTPRequestHandler):
 		elif request_path[0] == "set":
 			print("got set!")
 			if request_path[1] == "x":
+				print()
+				print()
+				print()
+				print()
+				print(float(request_path[2]))
+				print()
+				print()
+				print()
+				print()
 				self.server.set_x(float(request_path[2]))
 			elif request_path[1] == "y":
 				self.server.set_y(float(request_path[2]))
