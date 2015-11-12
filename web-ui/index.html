@@ -99,9 +99,7 @@
     <script>
     function sendGET2(command,id,add_value) {
       console.log(id.innerHTML)
-      new_value = parseFloat(id.innerHTML) + add_value
       $.get('http://0.0.0.0:9000/set/' + command + '/' + new_value)
-      console.log(new_value)
     }
     </script>
     <p><strong>X:</strong> <span id="setx"></span> m
