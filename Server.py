@@ -33,16 +33,11 @@ class ImageServerRequestHandler(BaseHTTPRequestHandler):
 
 		elif request_path[0] == "set":
 			print("got set!")
+			print(request_path[1])
+			print(request_path[2])
+			print(float(request_path[2]))
+			
 			if request_path[1] == "x":
-				print()
-				print()
-				print()
-				print()
-				print(float(request_path[2]))
-				print()
-				print()
-				print()
-				print()
 				self.server.set_x(float(request_path[2]))
 			elif request_path[1] == "y":
 				self.server.set_y(float(request_path[2]))
@@ -69,6 +64,10 @@ class ImageServerRequestHandler(BaseHTTPRequestHandler):
 				self.server.set_wp_distance(float(request_path[2]))
 			elif request_path[1] == "rate":
 				self.server.set_rate(float(request_path[2]))
+			elif request_path[1] == "gain_f":
+				self.server.set_gain_front(float(request_path[2]))
+			elif request_path[1] == "gain_b":
+				self.server.set_gain_back(float(request_path[2]))
 			self.send_response(200)
 			self.send_header("Content-Type", "text/plain")
 			self.send_header("Access-Control-Allow-Origin", self.headers['Origin'])

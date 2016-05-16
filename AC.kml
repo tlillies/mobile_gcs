@@ -1,0 +1,24 @@
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>AC</name>
+    <visibility>1</visibility>
+    <Style id="ac">
+      <IconStyle>
+        <scale>1.2</scale>
+        <heading>278</heading>
+        <Icon>
+          <href>https://maps.google.com/mapfiles/kml/shapes/airports.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
+    <Placemark>
+      <name>AC</name>
+      <visibility>1</visibility>
+      <styleUrl>ac</styleUrl>
+      <Point>
+        <altitudeMode>relativeToGround</altitudeMode>
+        <coordinates>149.168060,-35.396697,200.230000</coordinates>
+      </Point>
+    </Placemark>
+  </Document>
+</kml>

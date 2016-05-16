@@ -1,0 +1,24 @@
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>MOBILE GCS</name>
+    <visibility>1</visibility>
+    <Style id="sn_van">
+      <IconStyle>
+        <scale>1.2</scale>
+        <heading>180.0</heading>
+        <Icon>
+          <href>http://maps.google.com/mapfiles/kml/shapes/truck.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
+    <Placemark>
+      <name>MOBILE GCS</name>
+      <visibility>1</visibility>
+      <styleUrl>sn_van</styleUrl>
+      <Point>
+        <altitudeMode>relativeToGround</altitudeMode>
+        <coordinates>149.168001,-35.397202,0.000000</coordinates>
+      </Point>
+    </Placemark>
+  </Document>
+</kml>

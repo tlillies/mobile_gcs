@@ -175,8 +175,10 @@ try:
 			rate_timer_last = time.time()
 			
 			# Calculate next waypoint
-			y = gcs.wp_distance * math.cos(math.radians(gcs.heading))
-			x = gcs.wp_distance * math.sin(math.radians(gcs.heading))
+			#y = gcs.wp_distance * math.cos(math.radians(gcs.heading))
+			#x = gcs.wp_distance * math.sin(math.radians(gcs.heading))
+			y = settings['wp_distance'] * math.cos(math.radians(gcs.heading))
+			x = settings['wp_distance'] * math.sin(math.radians(gcs.heading))
 
 			# Send new waypoint
 			lat, lon = helpers.dist_to_latlon(ac.set_lat,ac.set_lon,y,x)

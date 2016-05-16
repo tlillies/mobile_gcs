@@ -10,7 +10,7 @@ $(document).ready(function(){
 			$("#setspeed").html(result["ac"]["setspeed"]);
 			$("#nowinspeed").html(result["ac"]["nowinspeed"]);
 			$("#wind").html(result["wind"]);
-			$("#winddir").html(result["winddir"]);
+			$("#wind_dir").html(result["wind_dir"]);
 			$("#setwind").html(result["setwind"]);
 			$("#setwinddir").html(result["setwinddir"]);
 			$("#alt").html(result["ac"]["alt"]);
