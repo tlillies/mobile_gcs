@@ -57,9 +57,16 @@ class ImageServerRequestHandler(BaseHTTPRequestHandler):
 				self.server.set_alt_base(float(request_path[2]))
 			elif request_path[1] == "alt_amplitude":
 				self.server.set_alt_amp(float(request_path[2]))
-			elif request_path[1] == "alt_period":
-				self.server.set_alt_per(float(request_path[2]))
-				self.server.set_alt_fre((2*math.pi) / float(request_path[2]))
+			elif request_path[1] == "alt_period_a":
+				self.server.set_alt_per_a(float(request_path[2]))
+				#self.server.set_alt_fre((2*math.pi) / float(request_path[2]))
+			elif request_path[1] == "alt_period_d":
+				self.server.set_alt_per_d(float(request_path[2]))
+				#self.server.set_alt_fre((2*math.pi) / float(request_path[2]))
+			elif request_path[1] == "arate":
+				self.server.set_arate(float(request_path[2]))
+			elif request_path[1] == "drate":
+				self.server.set_drate(float(request_path[2]))
 			elif request_path[1] == "wp_dist":
 				self.server.set_wp_distance(float(request_path[2]))
 			elif request_path[1] == "rate":
@@ -160,14 +167,66 @@ class ImageServer(HTTPServer):
 		return
 
 	def set_alt_amp(self,amplitutde):
+		if amplitutde < 0:
+			amplitutde = 0
 		self.status_lock.acquire()
 		self.settings['alt_amp'] = amplitutde
+		try:
+			self.settings['arate'] = amplitutde/self.settings['alt_per_a']
+			self.settings['drate'] = amplitutde/self.settings['alt_per_d']
+		except:
+			self.settings['arate'] = 0
+			self.settings['drate'] = 0
 		self.status_lock.release()
 		return
 
-	def set_alt_per(self,period):
+	def set_arate(self,arate):
+		if arate < 0:
+			arate = 0
 		self.status_lock.acquire()
-		self.settings['alt_per'] = period
+		self.settings['arate'] = arate
+		try:
+			self.settings['alt_per_a'] = self.settings['alt_amp']/arate
+		except:
+			self.settings['alt_per_a'] = 0
+		self.status_lock.release()
+		return
+
+	def set_drate(self,drate):
+		if drate < 0:
+			drate = 0
+		self.status_lock.acquire()
+		self.settings['drate'] = drate
+		try:
+			self.settings['alt_per_d'] = self.settings['alt_amp']/drate
+		except:
+			self.settings['alt_per_d'] = 0
+		self.status_lock.release()
+		return
+
+	def set_alt_per_a(self,period):
+		print(period)
+		if period < 0:
+			period = 0
+		print(period)
+		self.status_lock.acquire()
+		self.settings['alt_per_a'] = period
+		try:
+			self.settings['arate'] = self.settings['alt_amp']/period
+		except:
+			self.settings['arate'] = 0
+		self.status_lock.release()
+		return
+
+	def set_alt_per_d(self,period):
+		if period < 0:
+			period = 0
+		self.status_lock.acquire()
+		self.settings['alt_per_d'] = period
+		try:
+			self.settings['drate'] = self.settings['alt_amp']/period
+		except:
+			self.settings['drate'] = 0
 		self.status_lock.release()
 		return
 
@@ -184,6 +243,8 @@ class ImageServer(HTTPServer):
 		return
 
 	def set_rate(self,rate):
+		if rate < 0:
+			rate = 0
 		self.status_lock.acquire()
 		self.settings['rate'] = rate
 		self.status_lock.release()

@@ -71,11 +71,14 @@
       <option value="y">y</option>
       <option value="alt">alt</option>
       <option value="alt_amplitude">alt amplitude</option>
-      <option value="alt_period">alt period</option>
+      <option value="alt_period_a">alt period ascending</option>
+      <option value="alt_period_d">alt period descending</option>
+      <option value="arate">ascending rate</option>
+      <option value="drate">descending rate</option>
       <!--<option value="wind">wind speed</option>-->
       <!--<option value="wind_dir">wind direction</option>-->
       <option value="wp_dist">waypoint distance</option>
-      <option value="rate">rate</option>
+      <option value="rate">update rate</option>
       <option value="gain_f">gain front</option>
       <option value="gain_b">gain back</option>
     </select>
@@ -126,9 +129,24 @@
       <button type="button" class="btn btn-default" onClick="sendGET2('alt_amplitude',altamp,-10)" style="float:right;width:60px">-10</button>
     </p>
     <div style="height:8px;"></div>
-    <p><strong>Alt Period:</strong> <span id="altper"></span> s
-      <button type="button" class="btn btn-default" onClick="sendGET2('alt_period',altper,10)" style="float:right;width:60px">+10</button>
-      <button type="button" class="btn btn-default" onClick="sendGET2('alt_period',altper,-10)" style="float:right;width:60px">-10</button>
+    <p><strong>Ascent Period:</strong> <span id="altpera"></span> s
+      <button type="button" class="btn btn-default" onClick="sendGET2('alt_period_a',altpera,10)" style="float:right;width:60px">+10</button>
+      <button type="button" class="btn btn-default" onClick="sendGET2('alt_period_a',altpera,-10)" style="float:right;width:60px">-10</button>
+    </p>
+    <div style="height:8px;"></div>
+    <p><strong>Descent Period:</strong> <span id="altperd"></span> s
+      <button type="button" class="btn btn-default" onClick="sendGET2('alt_period_d',altperd,10)" style="float:right;width:60px">+10</button>
+      <button type="button" class="btn btn-default" onClick="sendGET2('alt_period_d',altperd,-10)" style="float:right;width:60px">-10</button>
+    </p>
+    <div style="height:8px;"></div>
+    <p><strong>Ascent Rate:</strong> <span id="arate"></span> m/s
+      <button type="button" class="btn btn-default" onClick="sendGET2('arate',arate,.1)" style="float:right;width:60px">+.1</button>
+      <button type="button" class="btn btn-default" onClick="sendGET2('arate',arate,-.1)" style="float:right;width:60px">-.1</button>
+    </p>
+    <div style="height:8px;"></div>
+    <p><strong>Descent Rate:</strong> <span id="drate"></span> m/s
+      <button type="button" class="btn btn-default" onClick="sendGET2('drate',drate,.1)" style="float:right;width:60px">+.1</button>
+      <button type="button" class="btn btn-default" onClick="sendGET2('drate',drate,-.1)" style="float:right;width:60px">-.1</button>
     </p>
     <!--
     <div style="height:8px;"></div>

@@ -91,11 +91,13 @@ settings['p_gain_front'] = P_GAIN_FRONT
 settings['p_gain_back'] = P_GAIN_BACK
 settings['alt_base'] = ALT_BASE
 settings['alt_amp'] = ALT_AMP
-settings['alt_per'] = ALT_PER
+settings['alt_per_a'] = ALT_PER
+settings['alt_per_d'] = ALT_PER
+settings['arate'] = ALT_AMP/(ALT_PER/2)
+settings['drate'] = ALT_AMP/(ALT_PER/2)
 settings['alt_fre'] = ALT_FRE
 settings['wp_distance'] = WP_DISTANCE
 settings['rate'] = UPDATE_RATE
-settings['alt_base'] = ALT_BASE
 
 print_timer = time.time()
 print_timer_last = time.time()
@@ -128,7 +130,23 @@ try:
 
 
 		## Calculate alt to set
-		ac.set_alt = settings['alt_base'] + settings['alt_amp'] * math.sin(settings['alt_fre'] *time.time())
+		
+		# Sinusoidal alt changes
+		#ac.set_alt = settings['alt_base'] + settings['alt_amp'] * math.sin(settings['alt_fre'] *time.time())
+
+		try:
+			if settings['alt_per_a'] > time.time() % (settings['alt_per_a']+settings['alt_per_d']): 
+				climbing = True
+			#if settings['alt_per_d'] < time.time() % settings['alt_per_d']+settings['alt_per_a']:
+			else:
+				climbing = False
+
+			if climbing == True:
+				ac.set_alt = settings['alt_base']-(settings['alt_amp']/2) + (settings['alt_amp']/settings['alt_per_a'])* (time.time() % (settings['alt_per_a']))
+			else:
+				ac.set_alt = settings['alt_base']+(settings['alt_amp']/2) - (settings['alt_amp']/settings['alt_per_d'])* (time.time() % (settings['alt_per_d']))
+		except:
+			ac.set_alt = settings['alt_base']
 
 
 		## Speed controller
@@ -250,7 +268,10 @@ try:
 			telemetry['gain_b'] = '{:7.7f}'.format(settings['p_gain_back'])
 			telemetry['altbase'] = '{:7.3f}'.format(settings['alt_base'])
 			telemetry['altamp'] = '{:7.3f}'.format(settings['alt_amp'])
-			telemetry['altper'] = '{:7.3f}'.format(settings['alt_per'])
+			telemetry['altpera'] = '{:7.3f}'.format(settings['alt_per_a'])
+			telemetry['altperd'] = '{:7.3f}'.format(settings['alt_per_d'])
+			telemetry['arate'] = '{:7.3f}'.format(settings['arate'])
+			telemetry['drate'] = '{:7.3f}'.format(settings['drate'])
 			telemetry['wp_dist'] = '{:7.3f}'.format(settings['wp_distance'])
 
 			telemetry['ac'] = ac_tel

@@ -26,7 +26,10 @@ $(document).ready(function(){
 			$("#gain_b").html(result["gain_b"]);
 			$("#altbase").html(result["altbase"]);
 			$("#altamp").html(result["altamp"]);
-			$("#altper").html(result["altper"]);
+			$("#altpera").html(result["altpera"]);
+			$("#altperd").html(result["altperd"]);
+			$("#arate").html(result["arate"]);
+			$("#drate").html(result["drate"]);
 			$("#wp_dist").html(result["wp_dist"]);
 		})
 			.fail( function() {

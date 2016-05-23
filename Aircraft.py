@@ -111,6 +111,9 @@ class Aircraft:
 		self.wp_lon = lon
 		self.wp_alt = alt
 
+		if alt < 20:
+			alt = 20
+
 		seq = 0
 		frame = mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT
 		radius = 0
