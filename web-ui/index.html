@@ -108,6 +108,12 @@
       $.get('http://0.0.0.0:9000/set/' + command + '/' + new_value)
     }
     </script>
+    <script>
+    function sendGET3(command,new_value) {
+      //console.log(id.innerHTML)
+      $.get('http://0.0.0.0:9000/set/' + command + '/' + new_value)
+    }
+    </script>
     <p><strong>X:</strong> <span id="setx"></span> m
       <button type="button" class="btn btn-default" onClick="sendGET2('x',setx,10)" style="float:right;width:60px">+10</button>
       <button type="button" class="btn btn-default" onClick="sendGET2('x',setx, -10)" style="float:right;width:60px">-10</button>
@@ -182,9 +188,9 @@
       <button type="button" class="btn btn-default" onClick="sendGET2('gain_b',gain_b,-.001)" style="float:right;width:60px">-.001</button>
     </p>
     <div style="height:8px;"></div>
-    <p><strong>Tracking:</strong> <span id="tracking">On</span>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">On</button>
-      <button type="button" class="btn btn-default" onClick="" style="float:right;width:60px">Off</button>
+    <p><strong>Speed Tracking:</strong> <span id="tracking"></span>
+      <button type="button" class="btn btn-default" onClick="sendGET3('tracking','True')" style="float:right;width:60px">True</button>
+      <button type="button" class="btn btn-default" onClick="sendGET3('tracking','False')" style="float:right;width:60px">False</button>
     </p>
     <p></p>
     </div>

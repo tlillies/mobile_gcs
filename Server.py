@@ -35,7 +35,7 @@ class ImageServerRequestHandler(BaseHTTPRequestHandler):
 			print("got set!")
 			print(request_path[1])
 			print(request_path[2])
-			print(float(request_path[2]))
+			print(request_path[2])
 			
 			if request_path[1] == "x":
 				self.server.set_x(float(request_path[2]))
@@ -75,6 +75,8 @@ class ImageServerRequestHandler(BaseHTTPRequestHandler):
 				self.server.set_gain_front(float(request_path[2]))
 			elif request_path[1] == "gain_b":
 				self.server.set_gain_back(float(request_path[2]))
+			elif request_path[1] == "tracking":
+				self.server.set_tracking(request_path[2])
 			self.send_response(200)
 			self.send_header("Content-Type", "text/plain")
 			self.send_header("Access-Control-Allow-Origin", self.headers['Origin'])
@@ -247,6 +249,15 @@ class ImageServer(HTTPServer):
 			rate = 0
 		self.status_lock.acquire()
 		self.settings['rate'] = rate
+		self.status_lock.release()
+		return
+
+	def set_tracking(self,value):
+		self.status_lock.acquire()
+		if value == 'True':
+			self.settings['tracking'] = True
+		if value == 'False':
+			self.settings['tracking'] = False
 		self.status_lock.release()
 		return
 		

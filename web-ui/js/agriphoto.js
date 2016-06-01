@@ -31,6 +31,7 @@ $(document).ready(function(){
 			$("#arate").html(result["arate"]);
 			$("#drate").html(result["drate"]);
 			$("#wp_dist").html(result["wp_dist"]);
+			$("#tracking").html(result["tracking"]);
 		})
 			.fail( function() {
 				$("#statusmsg").html("Not running");

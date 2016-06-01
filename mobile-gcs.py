@@ -98,6 +98,7 @@ settings['drate'] = ALT_AMP/(ALT_PER/2)
 settings['alt_fre'] = ALT_FRE
 settings['wp_distance'] = WP_DISTANCE
 settings['rate'] = UPDATE_RATE
+settings['tracking'] = True
 
 print_timer = time.time()
 print_timer_last = time.time()
@@ -204,7 +205,8 @@ try:
 			ac.set_rally(gcs)
 
 			# Send Speed
-			ac.set_speed(speed)
+			if settings['tracking']:
+				ac.set_speed(speed)
 
 
 		## Print out debug info and send json to kml updater
@@ -273,6 +275,7 @@ try:
 			telemetry['arate'] = '{:7.3f}'.format(settings['arate'])
 			telemetry['drate'] = '{:7.3f}'.format(settings['drate'])
 			telemetry['wp_dist'] = '{:7.3f}'.format(settings['wp_distance'])
+			telemetry['tracking'] = '{0}'.format(settings['tracking'])
 
 			telemetry['ac'] = ac_tel
 			telemetry['gcs'] = gcs_tel

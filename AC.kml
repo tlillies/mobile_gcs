@@ -5,7 +5,7 @@
     <Style id="ac">
       <IconStyle>
         <scale>1.2</scale>
-        <heading>7</heading>
+        <heading>227</heading>
         <Icon>
           <href>https://maps.google.com/mapfiles/kml/shapes/airports.png</href>
         </Icon>
@@ -17,7 +17,7 @@
       <styleUrl>ac</styleUrl>
       <Point>
         <altitudeMode>relativeToGround</altitudeMode>
-        <coordinates>149.299824,-35.313257,84.340000</coordinates>
+        <coordinates>149.177019,-35.408715,200.069000</coordinates>
       </Point>
     </Placemark>
   </Document>

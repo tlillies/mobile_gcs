@@ -126,6 +126,7 @@ class Aircraft:
             mavutil.mavlink.MAV_CMD_NAV_WAYPOINT,
             current, 0, 0, radius, 1.0, 0, lat, lon, alt)
 
+		print("ALT: {0}".format(alt))
 		self.mav.mav.send(msg)
 
 	def set_x(self,x):
