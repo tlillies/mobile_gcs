@@ -49,7 +49,7 @@
         <h1>AgriPhoto</h1>
       </div>-->
       <div style="float:left;width:35%">
-        <h3>Aircraft</h3>
+        <h3>Aircraft (<span id="acinterface"></span>)</h3>
     <p><strong>Location:</strong> <span id="aclat"></span>,<span id="aclon"></span> (<span id="acheading"></span>&deg;)</p>
     <strong>Air Speed:</strong> <span id="airspeed"></span> m/s
     <strong>Ground Speed:</strong> <span id="groundspeed"></span> m/s
@@ -60,7 +60,7 @@
     <p><strong>Alt:</strong> <span id="alt"></span> m</p>
     <p><strong>Commanded Alt:</strong> <span id="setalt"></span> m</p>
 
-    <h3>Car</h3>
+    <h3>Car (<span id="carinterface"></span>)</h3>
     <p><strong>Location:</strong> <span id="gcslat"></span>, <span id="gcslon"></span> (<span id="gcsheading"></span>&deg;)</p>
     <p><strong>Speed:</strong> <span id="gcsspeed"></span> m/s</p>
 
@@ -192,6 +192,7 @@
       <button type="button" class="btn btn-default" onClick="sendGET3('tracking','True')" style="float:right;width:60px">True</button>
       <button type="button" class="btn btn-default" onClick="sendGET3('tracking','False')" style="float:right;width:60px">False</button>
     </p>
+
     <p></p>
     </div>
     </div>
@@ -210,6 +211,17 @@
     <script src="js/agriphoto.js"></script>
     <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
     <script src="js/ie10-viewport-bug-workaround.js"></script>
+    <script>
+    function f_color(){
+      if (document.getElementById('tracking').innerHTML == 'True') {
+        document.getElementById('tracking').style.color = "green";
+      }
+      else {
+        document.getElementById('tracking').style.color = "red";
+      }
+    }
+    setInterval(f_color, 1);
+    </script>
   
 
 </body></html>

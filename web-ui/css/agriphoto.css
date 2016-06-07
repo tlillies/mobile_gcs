@@ -83,6 +83,14 @@ body > .container {
   padding: 15px;
 }
 
+.nominal{
+    background: green;
+}
+
+.problem{
+    background: red;
+}
+
 code {
   font-size: 80%;
 }
