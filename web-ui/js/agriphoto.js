@@ -32,6 +32,11 @@ $(document).ready(function(){
 			$("#drate").html(result["drate"]);
 			$("#wp_dist").html(result["wp_dist"]);
 			$("#tracking").html(result["tracking"]);
+			$("#acinterface").html(result["ac"]["ac_interface"]);
+			$("#gsinterface").html(result["gcs"]["gs_interface"]);
+			$("#heartbeat").html(result["ac"]["heartbeat"]);
+			$("#gps").html(result["gcs"]["gps"]);
+			$("#comspeed").html(result["ac"]["commanded_speed"]);
 		})
 			.fail( function() {
 				$("#statusmsg").html("Not running");

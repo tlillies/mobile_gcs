@@ -53,12 +53,12 @@ class Aircraft:
 		self.max_alt = 250
 
 		# max x and y distance in meters from car
-		self.max_x = 200
-		self.max_y = 200
+		self.max_x = 500
+		self.max_y = 500
 
 		# Min and max airspeed
-		self.as_min = 14
-		self.as_max = 25
+		self.as_min = 15
+		self.as_max = 35
 
 		self.rally = None
 		self.rallypoint = None
@@ -142,13 +142,6 @@ class Aircraft:
 		if y < -500:
 			y = -500
 		self.y_offset = y
-
-	# def set_alt(self,alt):
-	# 	if alt > 500:
-	# 		alt = 500
-	# 	if alt < 50:
-	# 		alt = 50
-	# 	self.set_alt = alt
 
 	def sw_speed(self,wind_speed):
 		self.set_wind_speed = wind_speed

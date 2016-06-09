@@ -27,6 +27,10 @@ ac_host = "udpin:0.0.0.0:14550"
 gps_port = '/tmp/ttyV0'
 #gps_port = '/dev/ttyUSB0' 
 
+# Debug File
+z = 0
+file_debug = open('debug.csv', 'w')
+
 ## Gains ##
 
 P_GAIN_FRONT = .001  # When the ac is in front of the car
@@ -67,6 +71,9 @@ gcs_tel = {}
 
 settings = {}
 
+header = "time,set_alt,alt,airspeed,groundspeed,gcs_speed,set_speed,commanded_speed\n"
+file_debug.write(header)
+
 # Aircraft
 ac = Aircraft.Aircraft(ac_host)
 if not ac.connect():
@@ -99,6 +106,9 @@ settings['alt_fre'] = ALT_FRE
 settings['wp_distance'] = WP_DISTANCE
 settings['rate'] = UPDATE_RATE
 settings['tracking'] = True
+settings['ac_interface'] = ac_host
+settings['gs_interface'] = gps_port
+
 
 print_timer = time.time()
 print_timer_last = time.time()
@@ -112,6 +122,11 @@ lat = gcs.lat
 lon = gcs.lon
 server.set_status("Entering main loop...")
 print("Entering main loop...")
+
+# timer for alt periods
+alt_timer = time.time()
+climbing_currently = False
+
 try:
 	while sys.stdin:
 		readable, writable, exceptional = select.select([x for x in [ac.mav.fd, gcs.gps, sys.stdin] if x is not None], [], [])
@@ -135,17 +150,23 @@ try:
 		# Sinusoidal alt changes
 		#ac.set_alt = settings['alt_base'] + settings['alt_amp'] * math.sin(settings['alt_fre'] *time.time())
 
+		# Linear alt changes
 		try:
 			if settings['alt_per_a'] > time.time() % (settings['alt_per_a']+settings['alt_per_d']): 
 				climbing = True
-			#if settings['alt_per_d'] < time.time() % settings['alt_per_d']+settings['alt_per_a']:
 			else:
 				climbing = False
 
+
+			# reset timer when changing between climbing and descending
+			if climbing != climbing_currently:
+				climbing_currently = climbing
+				alt_timer = time.time()
+
 			if climbing == True:
-				ac.set_alt = settings['alt_base']-(settings['alt_amp']/2) + (settings['alt_amp']/settings['alt_per_a'])* (time.time() % (settings['alt_per_a']))
+				ac.set_alt = settings['alt_base']-(settings['alt_amp']/2) + (settings['alt_amp']/settings['alt_per_a']) * (time.time()-alt_timer)
 			else:
-				ac.set_alt = settings['alt_base']+(settings['alt_amp']/2) - (settings['alt_amp']/settings['alt_per_d'])* (time.time() % (settings['alt_per_d']))
+				ac.set_alt = settings['alt_base']+(settings['alt_amp']/2) - (settings['alt_amp']/settings['alt_per_d']) * (time.time()-alt_timer)
 		except:
 			ac.set_alt = settings['alt_base']
 
@@ -194,8 +215,6 @@ try:
 			rate_timer_last = time.time()
 			
 			# Calculate next waypoint
-			#y = gcs.wp_distance * math.cos(math.radians(gcs.heading))
-			#x = gcs.wp_distance * math.sin(math.radians(gcs.heading))
 			y = settings['wp_distance'] * math.cos(math.radians(gcs.heading))
 			x = settings['wp_distance'] * math.sin(math.radians(gcs.heading))
 
@@ -276,11 +295,19 @@ try:
 			telemetry['drate'] = '{:7.3f}'.format(settings['drate'])
 			telemetry['wp_dist'] = '{:7.3f}'.format(settings['wp_distance'])
 			telemetry['tracking'] = '{0}'.format(settings['tracking'])
+			ac_tel['ac_interface'] = '{0}'.format(settings['ac_interface'])
+			gcs_tel['gs_interface'] = '{0}'.format(settings['gs_interface'])
+			ac_tel['heartbeat'] = '{0}'.format(ac.heartbeat)
+			gcs_tel['gps'] = '{0}'.format(gcs.active)
+			ac_tel['commanded_speed'] = '{0}'.format(ac.got_speed)
 
 			telemetry['ac'] = ac_tel
 			telemetry['gcs'] = gcs_tel
 
 			server.set_status("Running")
+			debug_line = '{0},{1},{2},{3},{4},{5},{6},{7}\n'.format(z,ac.set_alt,ac.relative_alt,ac.airspeed,ac.groundspeed,gcs.speed,speed,ac.got_speed)
+			file_debug.write(debug_line)
+			z += 1
 			server.set_telemetry(telemetry)
 
 		# End if web server is finished

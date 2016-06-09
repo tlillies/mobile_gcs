@@ -54,13 +54,14 @@
     <strong>Air Speed:</strong> <span id="airspeed"></span> m/s
     <strong>Ground Speed:</strong> <span id="groundspeed"></span> m/s
     <p></p>
-    <p><strong>Set Speed:</strong> <span id="setspeed"></span> m/s</p> 
+    <p><strong>Set Speed:</strong> <span id="setspeed"></span> m/s</p>
+    <p><strong>Commanded Speed:</strong> <span id="comspeed"></span> m/s</p> 
     <p><strong>No Wind Correction:</strong> <span id="nowinspeed"></span> m/s</p>
     <p><strong>Wind:</strong> <span id="wind"></span> m/s (<span id="wind_dir"></span>&deg;)</p>
     <p><strong>Alt:</strong> <span id="alt"></span> m</p>
     <p><strong>Commanded Alt:</strong> <span id="setalt"></span> m</p>
 
-    <h3>Car (<span id="carinterface"></span>)</h3>
+    <h3>Car (<span id="gsinterface"></span>)</h3>
     <p><strong>Location:</strong> <span id="gcslat"></span>, <span id="gcslon"></span> (<span id="gcsheading"></span>&deg;)</p>
     <p><strong>Speed:</strong> <span id="gcsspeed"></span> m/s</p>
 
@@ -193,6 +194,8 @@
       <button type="button" class="btn btn-default" onClick="sendGET3('tracking','False')" style="float:right;width:60px">False</button>
     </p>
 
+  <span id="heartbeat" style="visibility:hidden;"></span>
+  <span id="gps" style="visibility:hidden;"></span>
     <p></p>
     </div>
     </div>
@@ -212,15 +215,19 @@
     <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
     <script src="js/ie10-viewport-bug-workaround.js"></script>
     <script>
-    function f_color(){
-      if (document.getElementById('tracking').innerHTML == 'True') {
-        document.getElementById('tracking').style.color = "green";
+    function f_color(condition,change){
+      if (document.getElementById(condition).innerHTML == 'True') {
+        document.getElementById(change).style.color = "green";
+        document.getElementById(change).style.backgroundColor = "white";
       }
       else {
-        document.getElementById('tracking').style.color = "red";
+        document.getElementById(change).style.color = "red";
+        document.getElementById(change).style.backgroundColor = "black";
       }
     }
-    setInterval(f_color, 1);
+    setInterval(f_color, 10, 'tracking', 'tracking');
+    setInterval(f_color, 10, 'heartbeat','acinterface');
+    setInterval(f_color, 10,'gps','gsinterface');
     </script>
   
 
