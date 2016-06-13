@@ -16,6 +16,8 @@ class Aircraft:
 
 		self.mav = None
 		self.host = host
+		self.time = 0
+		self.time_boot = 0
 
 		self.airspeed = None
 		self.groundspeed = None
@@ -49,12 +51,12 @@ class Aircraft:
 		self.set_z = 100
 
 		# max and min alt
-		self.min_alt = 75
-		self.max_alt = 250
+		self.min_alt = 50
+		self.max_alt = 800
 
 		# max x and y distance in meters from car
-		self.max_x = 500
-		self.max_y = 500
+		self.max_x = 800
+		self.max_y = 800
 
 		# Min and max airspeed
 		self.as_min = 15
@@ -111,8 +113,10 @@ class Aircraft:
 		self.wp_lon = lon
 		self.wp_alt = alt
 
-		if alt < 20:
-			alt = 20
+		if alt < self.min_alt:
+			alt = self.min_alt
+		if alt > self.max_alt:
+			alt = self.max_alt
 
 		seq = 0
 		frame = mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT
@@ -130,17 +134,17 @@ class Aircraft:
 		self.mav.mav.send(msg)
 
 	def set_x(self,x):
-		if x > 500:
-			x = 500
-		if x < -500:
-			x = -500
+		if x > self.max_x:
+			x =  self.max_x
+		if x < self.max_x * -1:
+			x = self.max_x * -1
 		self.x_offset = x
 
 	def set_y(self,y):
-		if y > 500:
-			y = 500
-		if y < -500:
-			y = -500
+		if y > self.max_y:
+			y =  self.max_y
+		if y < self.max_y * -1:
+			y = self.max_y * -1
 		self.y_offset = y
 
 	def sw_speed(self,wind_speed):
@@ -221,3 +225,6 @@ class Aircraft:
 				if msg.get_type() == "VFR_HUD":
 						self.airspeed = msg.airspeed
 						self.groundspeed = msg.groundspeed
+				if msg.get_type() == "SYSTEM_TIME":
+						self.time = msg.time_unix_usec
+						self.time_boot = msg.time_boot_ms

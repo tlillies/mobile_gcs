@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="css/font-awesome.min.css">
 
     <!-- Custom styles for this template -->
-    <link href="css/agriphoto.css" rel="stylesheet">
+    <link href="css/mobile-gcs.css" rel="stylesheet">
 
   </head>
 
@@ -33,7 +33,7 @@
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="index.html">MOBILE GCS</a>
+          Connected<a class="navbar-brand" href="index.html" id="server">MOBILE GCS</a>
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
@@ -211,7 +211,7 @@
     <!-- Placed at the end of the document so the pages load faster -->
     <script src="js/jquery.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
-    <script src="js/agriphoto.js"></script>
+    <script src="js/mobile-gcs.js"></script>
     <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
     <script src="js/ie10-viewport-bug-workaround.js"></script>
     <script>
@@ -228,6 +228,7 @@
     setInterval(f_color, 10, 'tracking', 'tracking');
     setInterval(f_color, 10, 'heartbeat','acinterface');
     setInterval(f_color, 10,'gps','gsinterface');
+    setInterval(f_color, 10,'server','server');
     </script>
   
 

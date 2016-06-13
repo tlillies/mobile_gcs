@@ -38,7 +38,7 @@ P_GAIN_BACK = .0005  # When the ac is behind car
 
 ## Flight settings ##
 
-ALT_BASE = 200
+ALT_BASE = 120
 ALT_AMP = 0
 ALT_PER = 240
 ALT_FRE = (2*math.pi) / ALT_PER
@@ -71,7 +71,7 @@ gcs_tel = {}
 
 settings = {}
 
-header = "time,set_alt,alt,airspeed,groundspeed,gcs_speed,set_speed,commanded_speed\n"
+header = "time,time_boot,set_alt,alt,airspeed,groundspeed,gcs_speed,set_speed,commanded_speed\n"
 file_debug.write(header)
 
 # Aircraft
@@ -305,7 +305,7 @@ try:
 			telemetry['gcs'] = gcs_tel
 
 			server.set_status("Running")
-			debug_line = '{0},{1},{2},{3},{4},{5},{6},{7}\n'.format(z,ac.set_alt,ac.relative_alt,ac.airspeed,ac.groundspeed,gcs.speed,speed,ac.got_speed)
+			debug_line = '{0},{1},{2},{3},{4},{5},{6},{7},{8}\n'.format(ac.time,ac.time_boot,ac.set_alt,ac.relative_alt,ac.airspeed,ac.groundspeed,gcs.speed,speed,ac.got_speed)
 			file_debug.write(debug_line)
 			z += 1
 			server.set_telemetry(telemetry)

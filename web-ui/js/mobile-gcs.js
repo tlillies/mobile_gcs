@@ -37,16 +37,12 @@ $(document).ready(function(){
 			$("#heartbeat").html(result["ac"]["heartbeat"]);
 			$("#gps").html(result["gcs"]["gps"]);
 			$("#comspeed").html(result["ac"]["commanded_speed"]);
+			$("#server").html("True")
 		})
 			.fail( function() {
 				$("#statusmsg").html("Not running");
-				$("#statusmsg,#aclat,#aclon,#acheading,\
-					#airspeed,#groundspeed,#setspeed,\
-					#nowinspeed,#wind,#winddir,#setwind,\
-					#setwinddir,#alt,#setalt,#setx,#sety\
-					#gcslat,#gcslon,#gcsheading,#gcsspeed\
-					#rate,#gain_f,#gain_b,#altbase,#altamp\
-					#altper,#wp_dist").html("");
+				$("#gps,#heartbeat").html("");
+				$("#server").html("False")
 
 			});
 	}, 1000);
